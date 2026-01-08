@@ -1,163 +1,52 @@
-import { eq } from "drizzle-orm"
 import { db } from "./index"
-import {
-  elementTemplates,
-  type NewElementTemplate,
-  type ExcalidrawElementData,
-} from "./schema"
+import { categories } from "./schema"
 
-// Color palette for warehouse elements
-const COLORS = {
-  racking: { bg: "#3b82f6", stroke: "#1d4ed8" }, // blue
-  lane: { bg: "#22c55e", stroke: "#15803d" }, // green
-  area: { bg: "#f59e0b", stroke: "#b45309" }, // amber
-  equipment: { bg: "#8b5cf6", stroke: "#6d28d9" }, // violet
-}
-
-// Helper to create Excalidraw element data
-function createElementData(
-  color: { bg: string; stroke: string },
-  type: "rectangle" | "ellipse" = "rectangle"
-): ExcalidrawElementData {
-  return {
-    type,
-    backgroundColor: color.bg,
-    strokeColor: color.stroke,
-    strokeWidth: 2,
-    fillStyle: "solid",
-    roughness: 0,
-    opacity: 80,
-  }
-}
-
-// Predefined warehouse element templates
-const predefinedElements: NewElementTemplate[] = [
-  // Racking Category
+// Seed some default categories (optional)
+const defaultCategories = [
   {
-    name: "Racking Unit",
-    category: "racking",
-    icon: "Warehouse",
-    excalidrawData: createElementData(COLORS.racking),
-    defaultWidth: 120,
-    defaultHeight: 40,
-    isSystem: true,
-  },
-  {
-    name: "Shelving",
-    category: "racking",
+    name: "Racking",
+    bgColor: "#3b82f6",
+    strokeColor: "#1d4ed8",
     icon: "LayoutGrid",
-    excalidrawData: createElementData(COLORS.racking),
-    defaultWidth: 80,
-    defaultHeight: 30,
-    isSystem: true,
-  },
-
-  // Lane Category
-  {
-    name: "Inbound Lane",
-    category: "lane",
-    icon: "ArrowDownToLine",
-    excalidrawData: createElementData(COLORS.lane),
-    defaultWidth: 60,
-    defaultHeight: 150,
-    isSystem: true,
   },
   {
-    name: "Outbound Lane",
-    category: "lane",
-    icon: "ArrowUpFromLine",
-    excalidrawData: createElementData(COLORS.lane),
-    defaultWidth: 60,
-    defaultHeight: 150,
-    isSystem: true,
-  },
-  {
-    name: "Conveyor",
-    category: "lane",
+    name: "Lanes",
+    bgColor: "#22c55e",
+    strokeColor: "#15803d",
     icon: "MoveHorizontal",
-    excalidrawData: createElementData(COLORS.lane),
-    defaultWidth: 200,
-    defaultHeight: 30,
-    isSystem: true,
   },
-
-  // Area Category
   {
-    name: "Staging Area",
-    category: "area",
+    name: "Areas",
+    bgColor: "#f59e0b",
+    strokeColor: "#b45309",
     icon: "Square",
-    excalidrawData: createElementData(COLORS.area),
-    defaultWidth: 150,
-    defaultHeight: 100,
-    isSystem: true,
   },
   {
-    name: "Packing Area",
-    category: "area",
-    icon: "Package",
-    excalidrawData: createElementData(COLORS.area),
-    defaultWidth: 120,
-    defaultHeight: 80,
-    isSystem: true,
-  },
-  {
-    name: "Consolidation Area",
-    category: "area",
-    icon: "Layers",
-    excalidrawData: createElementData(COLORS.area),
-    defaultWidth: 140,
-    defaultHeight: 100,
-    isSystem: true,
-  },
-  {
-    name: "Quality Control",
-    category: "area",
-    icon: "ClipboardCheck",
-    excalidrawData: createElementData(COLORS.area),
-    defaultWidth: 100,
-    defaultHeight: 80,
-    isSystem: true,
-  },
-
-  // Equipment Category
-  {
-    name: "Forklift Station",
-    category: "equipment",
+    name: "Equipment",
+    bgColor: "#8b5cf6",
+    strokeColor: "#6d28d9",
     icon: "Truck",
-    excalidrawData: createElementData(COLORS.equipment, "ellipse"),
-    defaultWidth: 50,
-    defaultHeight: 50,
-    isSystem: true,
-  },
-  {
-    name: "Dock Door",
-    category: "equipment",
-    icon: "DoorOpen",
-    excalidrawData: createElementData(COLORS.equipment),
-    defaultWidth: 80,
-    defaultHeight: 20,
-    isSystem: true,
   },
 ]
 
 export async function seed() {
-  console.log("Seeding predefined element templates...")
+  console.log("Seeding default categories...")
 
-  // Clear existing system elements
-  await db
-    .delete(elementTemplates)
-    .where(eq(elementTemplates.isSystem, true))
-    .catch(() => {
-      // Table might not exist yet, ignore
-    })
+  // Check if categories already exist
+  const existingCategories = await db.select().from(categories)
 
-  // Insert predefined elements
+  if (existingCategories.length > 0) {
+    console.log("Categories already exist, skipping seed")
+    return existingCategories
+  }
+
+  // Insert default categories
   const inserted = await db
-    .insert(elementTemplates)
-    .values(predefinedElements)
+    .insert(categories)
+    .values(defaultCategories)
     .returning()
 
-  console.log(`Seeded ${inserted.length} element templates`)
+  console.log(`Seeded ${inserted.length} categories`)
   return inserted
 }
 

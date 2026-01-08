@@ -4,24 +4,20 @@ import {
   timestamp,
   jsonb,
   uuid,
-  pgEnum,
   integer,
   boolean,
 } from "drizzle-orm/pg-core"
-
-export const elementCategoryEnum = pgEnum("element_category", [
-  "racking",
-  "lane",
-  "area",
-  "equipment",
-  "custom",
-])
+import { relations } from "drizzle-orm"
+import { categories } from "./category"
 
 // Predefined + custom warehouse element templates
 export const elementTemplates = pgTable("element_templates", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  category: elementCategoryEnum("category").notNull(),
+  // Reference to category
+  categoryId: uuid("category_id").references(() => categories.id, {
+    onDelete: "set null",
+  }),
   // Excalidraw element definition (shape, color, size, etc.)
   excalidrawData: jsonb("excalidraw_data").$type<ExcalidrawElementData>(),
   // Icon name from lucide-react for library display
@@ -32,6 +28,21 @@ export const elementTemplates = pgTable("element_templates", {
   isSystem: boolean("is_system").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
+
+// Relations
+export const elementTemplatesRelations = relations(
+  elementTemplates,
+  ({ one }) => ({
+    category: one(categories, {
+      fields: [elementTemplates.categoryId],
+      references: [categories.id],
+    }),
+  })
+)
+
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  elements: many(elementTemplates),
+}))
 
 // Type for Excalidraw element data stored in JSONB
 export interface ExcalidrawElementData {
@@ -48,4 +59,3 @@ export interface ExcalidrawElementData {
 
 export type ElementTemplate = typeof elementTemplates.$inferSelect
 export type NewElementTemplate = typeof elementTemplates.$inferInsert
-export type ElementCategory = (typeof elementCategoryEnum.enumValues)[number]

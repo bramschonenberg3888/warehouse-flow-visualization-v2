@@ -14,6 +14,7 @@ import {
   ClipboardCheck,
   Truck,
   DoorOpen,
+  Folder,
   type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -28,7 +29,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { addElementToCanvas } from "./excalidraw-wrapper"
 import { api } from "@/trpc/react"
-import type { ElementCategory, ElementTemplate } from "@/server/db/schema"
+import type { Category } from "@/server/db/schema"
 
 // Icon mapping for element templates
 const iconMap: Record<string, LucideIcon> = {
@@ -43,26 +44,29 @@ const iconMap: Record<string, LucideIcon> = {
   ClipboardCheck,
   Truck,
   DoorOpen,
+  Folder,
 }
 
-// Category labels
-const categoryLabels: Record<ElementCategory, string> = {
-  racking: "Racking",
-  lane: "Lanes",
-  area: "Areas",
-  equipment: "Equipment",
-  custom: "Custom",
+interface ElementWithCategory {
+  id: string
+  name: string
+  categoryId: string | null
+  excalidrawData: {
+    type?: string
+    backgroundColor?: string
+    strokeColor?: string
+    strokeWidth?: number
+    fillStyle?: string
+    roughness?: number
+    opacity?: number
+  } | null
+  icon: string
+  defaultWidth: number
+  defaultHeight: number
+  isSystem: boolean
+  createdAt: Date
+  category: Category | null
 }
-
-// Category colors for elements
-const categoryColors: Record<ElementCategory, { bg: string; stroke: string }> =
-  {
-    racking: { bg: "#3b82f6", stroke: "#1d4ed8" },
-    lane: { bg: "#22c55e", stroke: "#15803d" },
-    area: { bg: "#f59e0b", stroke: "#b45309" },
-    equipment: { bg: "#8b5cf6", stroke: "#6d28d9" },
-    custom: { bg: "#6b7280", stroke: "#374151" },
-  }
 
 interface ElementLibrarySidebarProps {
   excalidrawAPI: ExcalidrawImperativeAPI | null
@@ -74,26 +78,35 @@ export function ElementLibrarySidebar({
   excalidrawAPI,
   onElementAdded,
 }: ElementLibrarySidebarProps) {
-  const [activeTab, setActiveTab] = useState<ElementCategory>("racking")
-  const { data: elements, isLoading } = api.element.getAll.useQuery()
+  const [activeTab, setActiveTab] = useState<string>("all")
+  const { data: elements, isLoading: elementsLoading } =
+    api.element.getAll.useQuery()
+  const { data: categories, isLoading: categoriesLoading } =
+    api.category.getAll.useQuery()
+
+  const isLoading = elementsLoading || categoriesLoading
 
   // Group elements by category
-  const elementsByCategory = elements?.reduce(
+  const elementsByCategory = (
+    elements as ElementWithCategory[] | undefined
+  )?.reduce(
     (acc, element) => {
-      const category = element.category
-      if (!acc[category]) {
-        acc[category] = []
+      const catId = element.categoryId || "uncategorized"
+      if (!acc[catId]) {
+        acc[catId] = []
       }
-      acc[category].push(element)
+      acc[catId].push(element)
       return acc
     },
-    {} as Record<ElementCategory, ElementTemplate[]>
+    {} as Record<string, ElementWithCategory[]>
   )
 
-  const handleAddElement = (template: ElementTemplate) => {
+  const handleAddElement = (template: ElementWithCategory) => {
     if (!excalidrawAPI) return
 
-    const colors = categoryColors[template.category]
+    const data = template.excalidrawData
+    const fallbackBg = template.category?.bgColor || "#6b7280"
+    const fallbackStroke = template.category?.strokeColor || "#374151"
 
     // Add element to canvas at center of viewport
     const appState = excalidrawAPI.getAppState()
@@ -103,28 +116,21 @@ export function ElementLibrarySidebar({
       appState.scrollY + appState.height / 2 - template.defaultHeight / 2
 
     const elementId = addElementToCanvas(excalidrawAPI, {
-      type: "rectangle",
+      type: data?.type || "rectangle",
       x: centerX,
       y: centerY,
       width: template.defaultWidth,
       height: template.defaultHeight,
-      backgroundColor: colors.bg,
-      strokeColor: colors.stroke,
-      fillStyle: "solid",
-      roughness: 0,
-      opacity: 80,
+      backgroundColor: data?.backgroundColor || fallbackBg,
+      strokeColor: data?.strokeColor || fallbackStroke,
+      fillStyle: data?.fillStyle || "solid",
+      strokeWidth: data?.strokeWidth || 2,
+      roughness: data?.roughness ?? 0,
+      opacity: data?.opacity ?? 80,
     })
 
     onElementAdded?.(elementId, template.id)
   }
-
-  const categories: ElementCategory[] = [
-    "racking",
-    "lane",
-    "area",
-    "equipment",
-    "custom",
-  ]
 
   return (
     <div className="flex h-full w-64 flex-col border-r bg-card">
@@ -137,16 +143,21 @@ export function ElementLibrarySidebar({
 
       <Tabs
         value={activeTab}
-        onValueChange={(v) => setActiveTab(v as ElementCategory)}
+        onValueChange={setActiveTab}
         className="flex flex-1 flex-col"
       >
-        <TabsList className="mx-4 mt-4 grid grid-cols-4">
-          {categories.slice(0, 4).map((cat) => (
-            <TabsTrigger key={cat} value={cat} className="text-xs">
-              {categoryLabels[cat].slice(0, 4)}
+        <ScrollArea className="border-b">
+          <TabsList className="mx-4 my-2 flex h-auto flex-wrap gap-1">
+            <TabsTrigger value="all" className="px-2 text-xs">
+              All
             </TabsTrigger>
-          ))}
-        </TabsList>
+            {categories?.map((cat) => (
+              <TabsTrigger key={cat.id} value={cat.id} className="px-2 text-xs">
+                {cat.name.length > 6 ? cat.name.slice(0, 6) + "…" : cat.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </ScrollArea>
 
         <ScrollArea className="flex-1 p-4">
           {isLoading ? (
@@ -156,11 +167,11 @@ export function ElementLibrarySidebar({
               ))}
             </div>
           ) : (
-            categories.map((category) => (
-              <TabsContent key={category} value={category} className="mt-0">
+            <>
+              <TabsContent value="all" className="mt-0">
                 <div className="space-y-2">
-                  {elementsByCategory?.[category]?.length ? (
-                    elementsByCategory[category].map((element) => (
+                  {elements && elements.length > 0 ? (
+                    (elements as ElementWithCategory[]).map((element) => (
                       <ElementButton
                         key={element.id}
                         element={element}
@@ -170,12 +181,37 @@ export function ElementLibrarySidebar({
                     ))
                   ) : (
                     <p className="py-4 text-center text-sm text-muted-foreground">
-                      No elements in this category
+                      No elements yet
                     </p>
                   )}
                 </div>
               </TabsContent>
-            ))
+
+              {categories?.map((category) => (
+                <TabsContent
+                  key={category.id}
+                  value={category.id}
+                  className="mt-0"
+                >
+                  <div className="space-y-2">
+                    {elementsByCategory?.[category.id]?.length ? (
+                      elementsByCategory[category.id]!.map((element) => (
+                        <ElementButton
+                          key={element.id}
+                          element={element}
+                          onClick={() => handleAddElement(element)}
+                          disabled={!excalidrawAPI}
+                        />
+                      ))
+                    ) : (
+                      <p className="py-4 text-center text-sm text-muted-foreground">
+                        No elements in this category
+                      </p>
+                    )}
+                  </div>
+                </TabsContent>
+              ))}
+            </>
           )}
         </ScrollArea>
       </Tabs>
@@ -190,14 +226,14 @@ export function ElementLibrarySidebar({
 }
 
 interface ElementButtonProps {
-  element: ElementTemplate
+  element: ElementWithCategory
   onClick: () => void
   disabled?: boolean
 }
 
 function ElementButton({ element, onClick, disabled }: ElementButtonProps) {
   const Icon = iconMap[element.icon] || Square
-  const colors = categoryColors[element.category]
+  const bgColor = element.category?.bgColor || "#6b7280"
 
   return (
     <TooltipProvider>
@@ -211,7 +247,7 @@ function ElementButton({ element, onClick, disabled }: ElementButtonProps) {
           >
             <div
               className="flex h-8 w-8 items-center justify-center rounded"
-              style={{ backgroundColor: colors.bg }}
+              style={{ backgroundColor: bgColor }}
             >
               <Icon className="h-4 w-4 text-white" />
             </div>

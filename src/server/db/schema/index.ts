@@ -1,3 +1,6 @@
+// Categories (user-defined element categories)
+export * from "./category"
+
 // Element templates (predefined warehouse elements)
 export * from "./element"
 

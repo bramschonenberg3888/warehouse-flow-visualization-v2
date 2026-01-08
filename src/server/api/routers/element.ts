@@ -4,28 +4,43 @@ import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import {
   elementTemplates,
-  elementCategoryEnum,
+  categories,
   type ExcalidrawElementData,
 } from "@/server/db/schema"
 
 export const elementRouter = createTRPCRouter({
-  // Get all element templates
+  // Get all element templates with their categories
   getAll: publicProcedure.query(async () => {
-    return db.select().from(elementTemplates).orderBy(elementTemplates.name)
+    return db
+      .select({
+        id: elementTemplates.id,
+        name: elementTemplates.name,
+        categoryId: elementTemplates.categoryId,
+        excalidrawData: elementTemplates.excalidrawData,
+        icon: elementTemplates.icon,
+        defaultWidth: elementTemplates.defaultWidth,
+        defaultHeight: elementTemplates.defaultHeight,
+        isSystem: elementTemplates.isSystem,
+        createdAt: elementTemplates.createdAt,
+        category: categories,
+      })
+      .from(elementTemplates)
+      .leftJoin(categories, eq(elementTemplates.categoryId, categories.id))
+      .orderBy(elementTemplates.name)
   }),
 
   // Get element templates by category
   getByCategory: publicProcedure
     .input(
       z.object({
-        category: z.enum(elementCategoryEnum.enumValues),
+        categoryId: z.string().uuid(),
       })
     )
     .query(async ({ input }) => {
       return db
         .select()
         .from(elementTemplates)
-        .where(eq(elementTemplates.category, input.category))
+        .where(eq(elementTemplates.categoryId, input.categoryId))
         .orderBy(elementTemplates.name)
     }),
 
@@ -34,8 +49,20 @@ export const elementRouter = createTRPCRouter({
     .input(z.object({ id: z.string().uuid() }))
     .query(async ({ input }) => {
       const [element] = await db
-        .select()
+        .select({
+          id: elementTemplates.id,
+          name: elementTemplates.name,
+          categoryId: elementTemplates.categoryId,
+          excalidrawData: elementTemplates.excalidrawData,
+          icon: elementTemplates.icon,
+          defaultWidth: elementTemplates.defaultWidth,
+          defaultHeight: elementTemplates.defaultHeight,
+          isSystem: elementTemplates.isSystem,
+          createdAt: elementTemplates.createdAt,
+          category: categories,
+        })
         .from(elementTemplates)
+        .leftJoin(categories, eq(elementTemplates.categoryId, categories.id))
         .where(eq(elementTemplates.id, input.id))
 
       return element ?? null
@@ -46,7 +73,7 @@ export const elementRouter = createTRPCRouter({
     .input(
       z.object({
         name: z.string().min(1).max(100),
-        category: z.enum(elementCategoryEnum.enumValues),
+        categoryId: z.string().uuid().nullable(),
         icon: z.string(),
         excalidrawData: z.custom<ExcalidrawElementData>(),
         defaultWidth: z.number().int().positive(),
@@ -58,8 +85,47 @@ export const elementRouter = createTRPCRouter({
         .insert(elementTemplates)
         .values({
           ...input,
-          isSystem: false, // User-created elements are not system elements
+          isSystem: false,
         })
+        .returning()
+
+      return element
+    }),
+
+  // Update a custom element template (only non-system elements)
+  update: publicProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string().min(1).max(100).optional(),
+        categoryId: z.string().uuid().nullable().optional(),
+        icon: z.string().optional(),
+        excalidrawData: z.custom<ExcalidrawElementData>().optional(),
+        defaultWidth: z.number().int().positive().optional(),
+        defaultHeight: z.number().int().positive().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { id, ...data } = input
+
+      // Only allow updating non-system elements
+      const [existing] = await db
+        .select()
+        .from(elementTemplates)
+        .where(eq(elementTemplates.id, id))
+
+      if (!existing) {
+        throw new Error("Element not found")
+      }
+
+      if (existing.isSystem) {
+        throw new Error("Cannot update system elements")
+      }
+
+      const [element] = await db
+        .update(elementTemplates)
+        .set(data)
+        .where(eq(elementTemplates.id, id))
         .returning()
 
       return element

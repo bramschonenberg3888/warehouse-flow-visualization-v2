@@ -156,10 +156,39 @@ export default function EditorPage({ params }: EditorPageProps) {
       files,
     }
 
-    // Update warehouse with canvas state
+    // Generate thumbnail from canvas
+    let thumbnailUrl: string | undefined
+    const visibleElements = (elements as ExcalidrawElementType[]).filter(
+      (e: ExcalidrawElementType) => !e.isDeleted
+    )
+    if (visibleElements.length > 0) {
+      try {
+        const { exportToBlob } = await import("@excalidraw/excalidraw")
+        const blob = await exportToBlob({
+          elements: visibleElements,
+          appState: {
+            ...appState,
+            exportWithDarkMode: false,
+            exportBackground: true,
+          },
+          files: excalidrawAPI.getFiles(),
+          maxWidthOrHeight: 400,
+        })
+        thumbnailUrl = await new Promise<string>((resolve) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result as string)
+          reader.readAsDataURL(blob)
+        })
+      } catch (err) {
+        console.error("Failed to generate thumbnail:", err)
+      }
+    }
+
+    // Update warehouse with canvas state and thumbnail
     await updateMutation.mutateAsync({
       id: warehouse.id,
       canvasState: sceneData.appState,
+      thumbnailUrl,
     })
 
     // Sync placed elements
