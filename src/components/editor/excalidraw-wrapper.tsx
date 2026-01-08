@@ -131,7 +131,7 @@ export function addElementToCanvas(
     groupIds: [],
     frameId: null,
     index: "a0",
-    roundness: { type: 3 },
+    roundness: null,
     seed: Math.floor(Math.random() * 2147483647),
     version: 1,
     versionNonce: Math.floor(Math.random() * 2147483647),

@@ -71,6 +71,33 @@ bun run db:generate && bun run db:push
 - **Canvas**: Excalidraw (dynamic import)
 - **Testing**: Vitest + Playwright
 
+## Open Design Decisions
+
+### Element Instance vs Template Properties
+
+When placing an element template in a warehouse, which properties should follow the template (update when template changes) vs be customizable per placed instance?
+
+**Template properties** (sync with template):
+
+- type (rectangle/ellipse)
+- strokeStyle (solid/dashed)
+- roundness (sharp/rounded)
+- roughness
+
+**Instance properties** (customizable per placement):
+
+- width/height (size)
+- position (x, y)
+- rotation
+- opacity
+- colors (as accent)
+
+**Options to consider:**
+
+1. Template = starting values only, placed elements fully independent after placement
+2. Hybrid: some properties always sync, others are per-instance
+3. Everything syncs except position/size/rotation (current behavior)
+
 ## Future Features
 
 - **CAD Import via Lucidchart**: Upload CAD drawings for warehouse layout backgrounds

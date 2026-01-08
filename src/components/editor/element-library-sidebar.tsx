@@ -57,8 +57,10 @@ interface ElementWithCategory {
     strokeColor?: string
     strokeWidth?: number
     fillStyle?: string
+    strokeStyle?: string
     roughness?: number
     opacity?: number
+    roundness?: { type: number } | null
   } | null
   icon: string
   defaultWidth: number
@@ -124,9 +126,11 @@ export function ElementLibrarySidebar({
       backgroundColor: data?.backgroundColor || fallbackBg,
       strokeColor: data?.strokeColor || fallbackStroke,
       fillStyle: data?.fillStyle || "solid",
+      strokeStyle: data?.strokeStyle || "solid",
       strokeWidth: data?.strokeWidth || 2,
       roughness: data?.roughness ?? 0,
       opacity: data?.opacity ?? 80,
+      roundness: data?.roundness ?? null,
     })
 
     onElementAdded?.(elementId, template.id)

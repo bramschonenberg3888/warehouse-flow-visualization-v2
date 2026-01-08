@@ -41,6 +41,7 @@ export default function EditElementPage({ params }: EditElementPageProps) {
 
   const { data: element, isLoading } = api.element.getById.useQuery({ id })
   const { data: categories } = api.category.getAll.useQuery()
+  const utils = api.useUtils()
 
   // Initialize form values when element loads
   if (element && !initialized) {
@@ -50,7 +51,8 @@ export default function EditElementPage({ params }: EditElementPageProps) {
   }
 
   const updateMutation = api.element.update.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      await utils.element.getAll.invalidate()
       router.push("/elements")
     },
   })
@@ -64,9 +66,11 @@ export default function EditElementPage({ params }: EditElementPageProps) {
       strokeColor?: string
       backgroundColor?: string
       fillStyle?: string
+      strokeStyle?: string
       strokeWidth?: number
       roughness?: number
       opacity?: number
+      roundness?: { type: number } | null
     }
     // Use element.id as basis for stable seed values
     const seedBase = element.id.split("-").reduce((acc, part) => {
@@ -85,13 +89,13 @@ export default function EditElementPage({ params }: EditElementPageProps) {
       backgroundColor: data.backgroundColor || "#6b7280",
       fillStyle: data.fillStyle || "solid",
       strokeWidth: data.strokeWidth || 2,
-      strokeStyle: "solid",
+      strokeStyle: data.strokeStyle || "solid",
       roughness: data.roughness || 0,
       opacity: data.opacity || 80,
       groupIds: [],
       frameId: null,
       index: "a0",
-      roundness: { type: 3 },
+      roundness: data.roundness ?? null,
       seed: seedBase,
       version: 1,
       versionNonce: seedBase + 1,
@@ -154,8 +158,10 @@ export default function EditElementPage({ params }: EditElementPageProps) {
       strokeWidth: el.strokeWidth || 2,
       fillStyle:
         (el.fillStyle as "solid" | "hachure" | "cross-hatch") || "solid",
+      strokeStyle: (el.strokeStyle as "solid" | "dashed" | "dotted") || "solid",
       roughness: el.roughness || 0,
       opacity: el.opacity || 80,
+      roundness: el.roundness ?? null,
     }
 
     // Get icon from selected category or default

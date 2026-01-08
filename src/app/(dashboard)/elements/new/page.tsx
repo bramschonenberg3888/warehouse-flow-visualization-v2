@@ -31,9 +31,11 @@ export default function NewElementPage() {
   const [hasElements, setHasElements] = useState(false)
 
   const { data: categories } = api.category.getAll.useQuery()
+  const utils = api.useUtils()
 
   const createMutation = api.element.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
+      await utils.element.getAll.invalidate()
       router.push("/elements")
     },
   })
@@ -87,8 +89,10 @@ export default function NewElementPage() {
       strokeWidth: el.strokeWidth || 2,
       fillStyle:
         (el.fillStyle as "solid" | "hachure" | "cross-hatch") || "solid",
+      strokeStyle: (el.strokeStyle as "solid" | "dashed" | "dotted") || "solid",
       roughness: el.roughness || 0,
       opacity: el.opacity || 80,
+      roundness: el.roundness ?? null,
     }
 
     // Get icon from selected category or default
