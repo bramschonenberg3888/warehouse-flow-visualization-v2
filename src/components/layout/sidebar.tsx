@@ -9,6 +9,7 @@ import {
   BarChart3,
   Settings,
   Boxes,
+  BookOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -34,6 +35,11 @@ const navigation = [
 ]
 
 const secondaryNavigation = [
+  {
+    name: "Wiki",
+    href: "/wiki",
+    icon: BookOpen,
+  },
   {
     name: "Analytics",
     href: "/analytics",

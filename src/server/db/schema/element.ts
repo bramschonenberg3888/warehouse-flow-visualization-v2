@@ -45,16 +45,25 @@ export const categoriesRelations = relations(categories, ({ many }) => ({
 }))
 
 // Type for Excalidraw element data stored in JSONB
+// These are TEMPLATE-CONTROLLED properties (sync to all instances)
+// Instance-controlled properties (position, size, rotation) are stored in placed_elements
 export interface ExcalidrawElementData {
+  // Shape type - defines the element's form
   type: "rectangle" | "ellipse" | "diamond" | "line" | "arrow"
+  // Colors - for brand consistency and recognition
   backgroundColor: string
   strokeColor: string
+  // Stroke properties - visual style
   strokeWidth: number
+  strokeStyle: "solid" | "dashed" | "dotted"
+  // Fill style - visual pattern
   fillStyle: "solid" | "hachure" | "cross-hatch"
+  // Roughness - hand-drawn "sketchiness" (0-2)
   roughness: number
+  // Opacity - transparency (0-100)
   opacity: number
-  // Additional Excalidraw properties as needed
-  [key: string]: unknown
+  // Roundness - corner style (null = sharp, object = rounded)
+  roundness: { type: number } | null
 }
 
 export type ElementTemplate = typeof elementTemplates.$inferSelect

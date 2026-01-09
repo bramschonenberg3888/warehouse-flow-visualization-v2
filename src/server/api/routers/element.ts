@@ -5,6 +5,7 @@ import { db } from "@/server/db"
 import {
   elementTemplates,
   categories,
+  placedElements,
   type ExcalidrawElementData,
 } from "@/server/db/schema"
 
@@ -147,6 +148,19 @@ export const elementRouter = createTRPCRouter({
 
       if (element.isSystem) {
         throw new Error("Cannot delete system elements")
+      }
+
+      // Check if element is used in any warehouses
+      const usedIn = await db
+        .select({ id: placedElements.id })
+        .from(placedElements)
+        .where(eq(placedElements.elementTemplateId, input.id))
+        .limit(1)
+
+      if (usedIn.length > 0) {
+        throw new Error(
+          "Cannot delete element: it is used in one or more warehouses. Remove all instances first."
+        )
       }
 
       await db.delete(elementTemplates).where(eq(elementTemplates.id, input.id))

@@ -1,38 +1,28 @@
 # Warehouse Flow Visualization
 
-A Next.js 16 web app for designing warehouse layouts with draggable elements and visualizing goods movement flow paths using an Excalidraw-based canvas editor.
+Next.js 16.1.1 web app for designing warehouse layouts with draggable elements and visualizing goods movement flow paths using an Excalidraw-based canvas editor.
 
 ## Project Structure
 
 ```
 src/
 ├── app/                        # Next.js App Router
-│   ├── (dashboard)/            # Protected dashboard routes
-│   │   ├── warehouses/         # Warehouse list, detail, editor
-│   │   ├── elements/           # Element templates (list, new, edit)
-│   │   └── layout.tsx          # Dashboard layout with sidebar
-│   ├── api/
-│   │   ├── auth/[...nextauth]/ # NextAuth API routes
-│   │   └── trpc/[trpc]/        # tRPC API endpoint
+│   ├── (dashboard)/            # Dashboard routes (warehouses, elements, wiki)
+│   ├── api/                    # NextAuth & tRPC endpoints
 │   └── globals.css
 ├── components/
 │   ├── ui/                     # Shadcn/ui components
 │   ├── editor/                 # Excalidraw wrapper & element sidebar
 │   ├── layout/                 # Header & sidebar navigation
-│   └── warehouse/              # Warehouse cards & forms
+│   ├── warehouse/              # Warehouse cards & forms
+│   └── wiki/                   # Wiki content renderer
 ├── server/
-│   ├── api/
-│   │   ├── root.ts             # tRPC root router
-│   │   ├── trpc.ts             # tRPC setup
-│   │   └── routers/            # Domain routers (warehouse, element, category)
-│   └── db/
-│       ├── index.ts            # Database connection
-│       ├── seed.ts             # Seed data script
-│       └── schema/             # Drizzle schemas (warehouse, element, category, flow)
-├── trpc/                       # Client-side tRPC (react.tsx, server.ts)
-├── lib/utils.ts                # Utility functions
+│   ├── api/routers/            # tRPC domain routers
+│   └── db/schema/              # Drizzle schemas
+├── trpc/                       # Client-side tRPC
+├── lib/                        # Utilities & wiki content
 ├── auth.ts                     # NextAuth configuration
-└── env.ts                      # Type-safe env variables
+└── env.ts                      # Type-safe environment variables
 tests/                          # Vitest unit + Playwright E2E
 migrations/                     # Drizzle database migrations
 ```
@@ -45,7 +35,7 @@ migrations/                     # Drizzle database migrations
 - **Database schemas**: `/server/db/schema` - one file per table
 - **Tests**: `/tests/unit` and `/tests/e2e` - mirror source structure
 
-## Code Quality
+## Code Quality - Zero Tolerance
 
 After editing ANY file, run:
 
@@ -53,9 +43,7 @@ After editing ANY file, run:
 bun run lint && bun run type-check
 ```
 
-Fix ALL errors before continuing.
-
-For database changes:
+Fix ALL errors before continuing. For database changes:
 
 ```bash
 bun run db:generate && bun run db:push
@@ -63,41 +51,32 @@ bun run db:generate && bun run db:push
 
 ## Tech Stack
 
-- **Framework**: Next.js 16, React 19, TypeScript 5
-- **API**: tRPC 11 + TanStack Query
-- **Database**: PostgreSQL + Drizzle ORM
-- **Auth**: NextAuth 5 (beta)
-- **Styling**: Tailwind CSS 4 + shadcn/ui
-- **Canvas**: Excalidraw (dynamic import)
-- **Testing**: Vitest + Playwright
+Next.js 16.1.1, React 19, TypeScript 5.9, tRPC 11, PostgreSQL + Drizzle ORM, NextAuth 5 + @auth/core, Tailwind CSS 4 + shadcn/ui, Excalidraw, Vitest + Playwright
 
-## Open Design Decisions
+## Design Decisions
 
-### Element Instance vs Template Properties
+### Element Instance vs Template Properties (Full Sync Model)
 
-When placing an element template in a warehouse, which properties should follow the template (update when template changes) vs be customizable per placed instance?
+**Template-Controlled** (sync from template, for brand consistency):
 
-**Template properties** (sync with template):
+- type, backgroundColor, strokeColor, strokeWidth, strokeStyle
+- fillStyle, roughness, roundness, opacity
 
-- type (rectangle/ellipse)
-- strokeStyle (solid/dashed)
-- roundness (sharp/rounded)
-- roughness
+**Instance-Controlled** (per placement, for warehouse flexibility):
 
-**Instance properties** (customizable per placement):
+- position (x, y), size (width, height), rotation, label, metadata
 
-- width/height (size)
-- position (x, y)
-- rotation
-- opacity
-- colors (as accent)
+When a template is updated, all placed instances reflect visual changes on next load. See the in-app Wiki for details.
 
-**Options to consider:**
+## Documentation
 
-1. Template = starting values only, placed elements fully independent after placement
-2. Hybrid: some properties always sync, others are per-instance
-3. Everything syncs except position/size/rotation (current behavior)
+When making changes that affect user-facing behavior, update the in-app Wiki:
+
+- Wiki content is in `src/lib/wiki-content.ts`
+- Add new articles or update existing ones to reflect changes
+- Key articles: "Element Properties" (Full Sync behavior), "Getting Started"
 
 ## Future Features
 
+- **Flow Editor**: Define and visualize goods movement paths between warehouse elements
 - **CAD Import via Lucidchart**: Upload CAD drawings for warehouse layout backgrounds

@@ -93,7 +93,7 @@ export default function WarehouseDetailPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="aspect-video rounded-lg border bg-muted/50">
+          <div className="h-48 max-w-md rounded-lg border bg-muted/50">
             {warehouse.thumbnailUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -104,7 +104,7 @@ export default function WarehouseDetailPage({
             ) : (
               <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
                 <p>No layout yet</p>
-                <Button className="mt-4" asChild>
+                <Button className="mt-4" size="sm" asChild>
                   <Link href={`/warehouses/${id}/editor`}>
                     <Edit className="mr-2 h-4 w-4" />
                     Start Designing

@@ -80,6 +80,9 @@ export default function ElementsPage() {
     onSuccess: () => {
       utils.element.getAll.invalidate()
     },
+    onError: (error) => {
+      alert(error.message)
+    },
   })
 
   const handleDeleteElement = (id: string, name: string) => {

@@ -1,6 +1,6 @@
 "use client"
 
-import { use, useState, useCallback, useMemo } from "react"
+import { use, useState, useCallback, useMemo, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { notFound } from "next/navigation"
@@ -52,8 +52,11 @@ export default function EditElementPage({ params }: EditElementPageProps) {
 
   const updateMutation = api.element.update.useMutation({
     onSuccess: async () => {
+      // Invalidate and refetch to ensure fresh data
       await utils.element.getAll.invalidate()
+      await utils.element.getById.invalidate({ id })
       router.push("/elements")
+      router.refresh()
     },
   })
 
@@ -108,6 +111,17 @@ export default function EditElementPage({ params }: EditElementPageProps) {
 
     return { elements: [canvasElement] }
   }, [element])
+
+  // Center the element when canvas loads
+  useEffect(() => {
+    if (excalidrawAPI && element) {
+      // Small delay to ensure canvas is ready
+      const timer = setTimeout(() => {
+        excalidrawAPI.scrollToContent(undefined, { fitToContent: true })
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [excalidrawAPI, element])
 
   const handleChange = useCallback(
     (

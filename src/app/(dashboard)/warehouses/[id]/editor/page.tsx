@@ -17,14 +17,8 @@ import {
 import { ElementLibrarySidebar } from "@/components/editor/element-library-sidebar"
 import { api } from "@/trpc/react"
 
-// Category colors matching element-library-sidebar
-const categoryColors: Record<string, { bg: string; stroke: string }> = {
-  racking: { bg: "#3b82f6", stroke: "#1d4ed8" },
-  lane: { bg: "#22c55e", stroke: "#15803d" },
-  area: { bg: "#f59e0b", stroke: "#b45309" },
-  equipment: { bg: "#8b5cf6", stroke: "#6d28d9" },
-  custom: { bg: "#6b7280", stroke: "#374151" },
-}
+// Default colors when template data is missing
+const DEFAULT_COLORS = { bg: "#6b7280", stroke: "#374151" }
 
 interface EditorPageProps {
   params: Promise<{ id: string }>
@@ -55,37 +49,39 @@ export default function EditorPage({ params }: EditorPageProps) {
   }, [templates])
 
   // Reconstruct Excalidraw elements from saved placed elements
+  // Visual properties (colors, style, roughness, etc.) come from TEMPLATE (Full Sync)
+  // Transform properties (position, size, rotation) come from PLACED ELEMENT (per-instance)
   const initialData = useMemo<ExcalidrawSceneData | undefined>(() => {
     if (!placedElements || !templates || placedElements.length === 0) {
       return undefined
     }
 
-    const defaultColors = { bg: "#6b7280", stroke: "#374151" }
     const elements: ExcalidrawElementType[] = placedElements.map((pe) => {
       const template = templateMap.get(pe.elementTemplateId)
-      const colors = template
-        ? (categoryColors[template.category] ?? defaultColors)
-        : defaultColors
+      const data = template?.excalidrawData
 
       return {
         id: pe.excalidrawId,
-        type: template?.excalidrawData?.type || "rectangle",
+        // TEMPLATE-CONTROLLED: Visual properties sync from template
+        type: data?.type || "rectangle",
+        strokeColor: data?.strokeColor || DEFAULT_COLORS.stroke,
+        backgroundColor: data?.backgroundColor || DEFAULT_COLORS.bg,
+        fillStyle: data?.fillStyle || "solid",
+        strokeWidth: data?.strokeWidth || 2,
+        strokeStyle: data?.strokeStyle || "solid",
+        roughness: data?.roughness ?? 0,
+        opacity: data?.opacity ?? 80,
+        roundness: data?.roundness ?? null,
+        // INSTANCE-CONTROLLED: Transform properties per warehouse placement
         x: pe.positionX,
         y: pe.positionY,
         width: pe.width,
         height: pe.height,
         angle: pe.rotation,
-        strokeColor: template?.excalidrawData?.strokeColor || colors.stroke,
-        backgroundColor: template?.excalidrawData?.backgroundColor || colors.bg,
-        fillStyle: template?.excalidrawData?.fillStyle || "solid",
-        strokeWidth: template?.excalidrawData?.strokeWidth || 2,
-        strokeStyle: template?.excalidrawData?.strokeStyle || "solid",
-        roughness: template?.excalidrawData?.roughness ?? 0,
-        opacity: template?.excalidrawData?.opacity ?? 80,
+        // Excalidraw internal properties
         groupIds: [],
         frameId: null,
         index: "a0",
-        roundness: template?.excalidrawData?.roundness ?? null,
         seed: Math.floor(Math.random() * 2147483647),
         version: 1,
         versionNonce: Math.floor(Math.random() * 2147483647),
@@ -120,11 +116,17 @@ export default function EditorPage({ params }: EditorPageProps) {
   const updateMutation = api.warehouse.update.useMutation({
     onSuccess: () => {
       setHasUnsavedChanges(false)
+      // Invalidate all related queries to refresh data
       utils.warehouse.getById.invalidate({ id })
+      utils.warehouse.getAll.invalidate()
     },
   })
 
-  const syncMutation = api.placedElement.syncWarehouse.useMutation()
+  const syncMutation = api.placedElement.syncWarehouse.useMutation({
+    onSuccess: () => {
+      utils.placedElement.getByWarehouse.invalidate({ warehouseId: id })
+    },
+  })
 
   const handleChange = useCallback(
     (

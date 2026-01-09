@@ -35,8 +35,10 @@ export default function NewElementPage() {
 
   const createMutation = api.element.create.useMutation({
     onSuccess: async () => {
+      // Invalidate and refetch to ensure fresh data
       await utils.element.getAll.invalidate()
       router.push("/elements")
+      router.refresh()
     },
   })
 
