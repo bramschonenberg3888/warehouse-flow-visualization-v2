@@ -6,7 +6,7 @@ import {
   Warehouse,
   LayoutDashboard,
   Route,
-  BarChart3,
+  Play,
   Settings,
   Boxes,
   BookOpen,
@@ -32,6 +32,16 @@ const navigation = [
     href: "/elements",
     icon: Boxes,
   },
+  {
+    name: "Flows",
+    href: "/flows",
+    icon: Route,
+  },
+  {
+    name: "Visualization",
+    href: "/visualization",
+    icon: Play,
+  },
 ]
 
 const secondaryNavigation = [
@@ -39,11 +49,6 @@ const secondaryNavigation = [
     name: "Wiki",
     href: "/wiki",
     icon: BookOpen,
-  },
-  {
-    name: "Analytics",
-    href: "/analytics",
-    icon: BarChart3,
   },
   {
     name: "Settings",

@@ -40,6 +40,7 @@ export default function EditorPage({ params }: EditorPageProps) {
     { enabled: !!id }
   )
   const { data: templates } = api.element.getAll.useQuery()
+
   const utils = api.useUtils()
 
   // Create a map of template IDs to templates for quick lookup
@@ -49,8 +50,6 @@ export default function EditorPage({ params }: EditorPageProps) {
   }, [templates])
 
   // Reconstruct Excalidraw elements from saved placed elements
-  // Visual properties (colors, style, roughness, etc.) come from TEMPLATE (Full Sync)
-  // Transform properties (position, size, rotation) come from PLACED ELEMENT (per-instance)
   const initialData = useMemo<ExcalidrawSceneData | undefined>(() => {
     if (!placedElements || !templates || placedElements.length === 0) {
       return undefined
@@ -62,7 +61,6 @@ export default function EditorPage({ params }: EditorPageProps) {
 
       return {
         id: pe.excalidrawId,
-        // TEMPLATE-CONTROLLED: Visual properties sync from template
         type: data?.type || "rectangle",
         strokeColor: data?.strokeColor || DEFAULT_COLORS.stroke,
         backgroundColor: data?.backgroundColor || DEFAULT_COLORS.bg,
@@ -72,13 +70,11 @@ export default function EditorPage({ params }: EditorPageProps) {
         roughness: data?.roughness ?? 0,
         opacity: data?.opacity ?? 80,
         roundness: data?.roundness ?? null,
-        // INSTANCE-CONTROLLED: Transform properties per warehouse placement
         x: pe.positionX,
         y: pe.positionY,
         width: pe.width,
         height: pe.height,
         angle: pe.rotation,
-        // Excalidraw internal properties
         groupIds: [],
         frameId: null,
         index: "a0",
@@ -116,7 +112,6 @@ export default function EditorPage({ params }: EditorPageProps) {
   const updateMutation = api.warehouse.update.useMutation({
     onSuccess: () => {
       setHasUnsavedChanges(false)
-      // Invalidate all related queries to refresh data
       utils.warehouse.getById.invalidate({ id })
       utils.warehouse.getAll.invalidate()
     },
@@ -146,7 +141,6 @@ export default function EditorPage({ params }: EditorPageProps) {
     const appState = excalidrawAPI.getAppState()
     const files = excalidrawAPI.getFiles()
 
-    // Save canvas state to warehouse
     const sceneData: ExcalidrawSceneData = {
       elements: elements as ExcalidrawElementType[],
       appState: {
@@ -158,7 +152,6 @@ export default function EditorPage({ params }: EditorPageProps) {
       files,
     }
 
-    // Generate thumbnail from canvas
     let thumbnailUrl: string | undefined
     const visibleElements = (elements as ExcalidrawElementType[]).filter(
       (e: ExcalidrawElementType) => !e.isDeleted
@@ -186,34 +179,32 @@ export default function EditorPage({ params }: EditorPageProps) {
       }
     }
 
-    // Update warehouse with canvas state and thumbnail
     await updateMutation.mutateAsync({
       id: warehouse.id,
       canvasState: sceneData.appState,
       thumbnailUrl,
     })
 
-    // Sync placed elements
-    const placedElements = Array.from(placedElementsRef.current.entries()).map(
-      ([, value]) => {
-        const element = (elements as ExcalidrawElementType[]).find(
-          (e: ExcalidrawElementType) => e.id === value.excalidrawId
-        )
-        if (!element || element.isDeleted) return null
-        return {
-          elementTemplateId: value.templateId,
-          excalidrawId: value.excalidrawId,
-          positionX: element.x,
-          positionY: element.y,
-          width: element.width,
-          height: element.height,
-          rotation: element.angle,
-        }
+    const placedElementsData = Array.from(
+      placedElementsRef.current.entries()
+    ).map(([, value]) => {
+      const element = (elements as ExcalidrawElementType[]).find(
+        (e: ExcalidrawElementType) => e.id === value.excalidrawId
+      )
+      if (!element || element.isDeleted) return null
+      return {
+        elementTemplateId: value.templateId,
+        excalidrawId: value.excalidrawId,
+        positionX: element.x,
+        positionY: element.y,
+        width: element.width,
+        height: element.height,
+        rotation: element.angle,
       }
-    )
+    })
 
-    const validElements = placedElements.filter(Boolean) as NonNullable<
-      (typeof placedElements)[number]
+    const validElements = placedElementsData.filter(Boolean) as NonNullable<
+      (typeof placedElementsData)[number]
     >[]
 
     if (validElements.length > 0) {
@@ -294,12 +285,17 @@ export default function EditorPage({ params }: EditorPageProps) {
 
       {/* Editor */}
       <div className="flex flex-1 overflow-hidden">
-        <ElementLibrarySidebar
-          excalidrawAPI={excalidrawAPI}
-          warehouseId={id}
-          onElementAdded={handleElementAdded}
-        />
-        <div className="flex-1">
+        {/* Element Library Sidebar */}
+        <div className="h-full w-64 border-r bg-card">
+          <ElementLibrarySidebar
+            excalidrawAPI={excalidrawAPI}
+            warehouseId={id}
+            onElementAdded={handleElementAdded}
+          />
+        </div>
+
+        {/* Canvas */}
+        <div className="relative flex-1">
           <ExcalidrawWrapper
             initialData={initialData}
             onChange={handleChange}
