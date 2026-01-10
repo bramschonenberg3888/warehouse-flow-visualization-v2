@@ -17,6 +17,7 @@ src/
 ├── components/
 │   ├── ui/                     # Shadcn/ui components
 │   ├── editor/                 # Excalidraw wrapper & element sidebar
+│   ├── flow-editor/            # Flow editor canvas & drag-drop sequence
 │   ├── layout/                 # Header & sidebar navigation
 │   ├── visualization/          # Canvas-based flow animation
 │   ├── warehouse/              # Warehouse cards & forms
@@ -84,7 +85,6 @@ When making changes that affect user-facing behavior, update the in-app Wiki:
 
 ## Future Features
 
-- **Flow Editor Optimization**: Improve the flow sequence builder with visual element selection (click to add), drag-and-drop reordering, live path preview while building, and quick element list selection
 - **CAD Import via Lucidchart**: Upload CAD drawings for warehouse layout backgrounds
 
 ## Architecture Alternatives
