@@ -27,9 +27,14 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Skeleton } from "@/components/ui/skeleton"
-import { addElementToCanvas } from "./excalidraw-wrapper"
 import { api } from "@/trpc/react"
 import type { Category } from "@/server/db/schema"
+import type { ExcalidrawElementData } from "@/server/db/schema/element"
+import {
+  isLegacyTemplate,
+  migrateLegacyTemplate,
+  generateExcalidrawElements,
+} from "@/lib/element-utils"
 
 // Icon mapping for element templates
 const iconMap: Record<string, LucideIcon> = {
@@ -73,7 +78,11 @@ interface ElementWithCategory {
 interface ElementLibrarySidebarProps {
   excalidrawAPI: ExcalidrawImperativeAPI | null
   warehouseId: string
-  onElementAdded?: (elementId: string, templateId: string) => void
+  onElementAdded?: (
+    groupId: string,
+    templateId: string,
+    elementIds: string[]
+  ) => void
 }
 
 export function ElementLibrarySidebar({
@@ -106,9 +115,7 @@ export function ElementLibrarySidebar({
   const handleAddElement = (template: ElementWithCategory) => {
     if (!excalidrawAPI) return
 
-    const data = template.excalidrawData
-    const fallbackBg = template.category?.bgColor || "#6b7280"
-    const fallbackStroke = template.category?.strokeColor || "#374151"
+    const data = template.excalidrawData as ExcalidrawElementData | null
 
     // Add element to canvas at center of viewport
     const appState = excalidrawAPI.getAppState()
@@ -117,23 +124,41 @@ export function ElementLibrarySidebar({
     const centerY =
       appState.scrollY + appState.height / 2 - template.defaultHeight / 2
 
-    const elementId = addElementToCanvas(excalidrawAPI, {
-      type: data?.type || "rectangle",
-      x: centerX,
-      y: centerY,
-      width: template.defaultWidth,
-      height: template.defaultHeight,
-      backgroundColor: data?.backgroundColor || fallbackBg,
-      strokeColor: data?.strokeColor || fallbackStroke,
-      fillStyle: data?.fillStyle || "solid",
-      strokeStyle: data?.strokeStyle || "solid",
-      strokeWidth: data?.strokeWidth || 2,
-      roughness: data?.roughness ?? 0,
-      opacity: data?.opacity ?? 80,
-      roundness: data?.roundness ?? null,
+    // Generate a group ID for this placement
+    const groupId = crypto.randomUUID()
+
+    // Get template elements (handling legacy vs v2 format)
+    let templateElements
+    if (isLegacyTemplate(data)) {
+      templateElements = migrateLegacyTemplate(
+        data,
+        template.defaultWidth,
+        template.defaultHeight
+      )
+    } else {
+      templateElements = data!.elements!
+    }
+
+    // Generate Excalidraw elements with shared groupId
+    const newElements = generateExcalidrawElements(
+      templateElements,
+      centerX,
+      centerY,
+      1,
+      1,
+      groupId
+    )
+
+    // Get element IDs for tracking
+    const elementIds = newElements.map((e) => e.id)
+
+    // Add elements to canvas
+    const existingElements = excalidrawAPI.getSceneElements()
+    excalidrawAPI.updateScene({
+      elements: [...existingElements, ...newElements],
     })
 
-    onElementAdded?.(elementId, template.id)
+    onElementAdded?.(groupId, template.id, elementIds)
   }
 
   return (

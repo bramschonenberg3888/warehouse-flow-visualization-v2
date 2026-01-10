@@ -19,6 +19,7 @@ import {
   Plus,
   Pencil,
   Settings,
+  Check,
   type LucideIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -68,6 +69,24 @@ const iconMap: Record<string, LucideIcon> = {
 }
 
 const iconOptions = Object.keys(iconMap)
+
+// Preset color palette for easy selection
+const colorPresets = [
+  { name: "Gray", bg: "#6b7280", stroke: "#374151" },
+  { name: "Red", bg: "#ef4444", stroke: "#b91c1c" },
+  { name: "Orange", bg: "#f97316", stroke: "#c2410c" },
+  { name: "Amber", bg: "#f59e0b", stroke: "#b45309" },
+  { name: "Yellow", bg: "#eab308", stroke: "#a16207" },
+  { name: "Lime", bg: "#84cc16", stroke: "#4d7c0f" },
+  { name: "Green", bg: "#22c55e", stroke: "#15803d" },
+  { name: "Teal", bg: "#14b8a6", stroke: "#0f766e" },
+  { name: "Cyan", bg: "#06b6d4", stroke: "#0e7490" },
+  { name: "Blue", bg: "#3b82f6", stroke: "#1d4ed8" },
+  { name: "Indigo", bg: "#6366f1", stroke: "#4338ca" },
+  { name: "Purple", bg: "#a855f7", stroke: "#7e22ce" },
+  { name: "Pink", bg: "#ec4899", stroke: "#be185d" },
+  { name: "Rose", bg: "#f43f5e", stroke: "#be123c" },
+]
 
 export default function ElementsPage() {
   const { data: elements, isLoading: elementsLoading } =
@@ -499,38 +518,26 @@ function CategoryManageDialog({ categories }: CategoryManageDialogProps) {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm">Background Color</label>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={bgColor}
-                    onChange={(e) => setBgColor(e.target.value)}
-                    className="h-10 w-12 cursor-pointer rounded border"
-                  />
-                  <Input
-                    value={bgColor}
-                    onChange={(e) => setBgColor(e.target.value)}
-                    className="flex-1"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm">Stroke Color</label>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={strokeColor}
-                    onChange={(e) => setStrokeColor(e.target.value)}
-                    className="h-10 w-12 cursor-pointer rounded border"
-                  />
-                  <Input
-                    value={strokeColor}
-                    onChange={(e) => setStrokeColor(e.target.value)}
-                    className="flex-1"
-                  />
-                </div>
+            <div className="space-y-2">
+              <label className="text-sm">Color</label>
+              <div className="grid grid-cols-7 gap-1.5">
+                {colorPresets.map((preset) => (
+                  <button
+                    key={preset.name}
+                    type="button"
+                    title={preset.name}
+                    onClick={() => {
+                      setBgColor(preset.bg)
+                      setStrokeColor(preset.stroke)
+                    }}
+                    className="relative h-7 w-7 rounded-md border transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+                    style={{ backgroundColor: preset.bg }}
+                  >
+                    {bgColor === preset.bg && (
+                      <Check className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow-md" />
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
             <div className="space-y-2">

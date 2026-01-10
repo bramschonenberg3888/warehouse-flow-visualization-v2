@@ -10,6 +10,7 @@ import {
   Settings,
   Boxes,
   BookOpen,
+  Layers,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -36,6 +37,11 @@ const navigation = [
     name: "Flows",
     href: "/flows",
     icon: Route,
+  },
+  {
+    name: "Scenarios",
+    href: "/scenarios",
+    icon: Layers,
   },
   {
     name: "Visualization",

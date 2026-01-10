@@ -110,15 +110,198 @@ Use the element library on the left side to drag and drop elements onto your can
 - **Rotate** using the rotation handle
 - **Select multiple** elements to move them together
 
-### 5. Define Flows (Coming Soon)
+### 5. Create Scenarios
 
-Create flow paths by selecting elements in sequence to show how goods move through your warehouse.
+Navigate to **Scenarios** to define how goods move through your warehouse:
+1. Click **New Scenario** and select your warehouse
+2. Define flows using the JSON editor (see [Scenarios & Flow Simulation](/wiki/scenarios-and-flows))
+3. Go to **Visualization** and select the Scenarios tab
+4. Choose your scenario and click **Play** to watch the simulation
 
 ## Tips
 
 - Use the **zoom controls** to navigate large layouts
 - **Save frequently** - your work is auto-saved but manual saves ensure nothing is lost
 - **Use categories** to organize your element library
+    `.trim(),
+  },
+  {
+    slug: "scenarios-and-flows",
+    title: "Scenarios & Flow Simulation",
+    description:
+      "Understanding the scenario engine and how to simulate goods movement through your warehouse",
+    category: "Simulation",
+    lastUpdated: "2025-01-10",
+    content: `
+## Overview
+
+Scenarios allow you to simulate how goods (pallets) move through your warehouse. Each scenario contains one or more **flows**, and each flow defines a graph of **nodes** connected by **edges**.
+
+## Key Concepts
+
+### Scenario
+A top-level container that holds:
+- One or more **flows** (movement patterns)
+- Global **settings** (speed multiplier, duration, seed)
+- Association with a specific **warehouse**
+
+### Flow
+A single movement pattern with:
+- **Nodes** - Locations, decision points, or exit points
+- **Edges** - Connections between nodes
+- **Spawning configuration** - How pallets are created
+- **Color** - Visual identifier for this flow's pallets
+
+### Node Types
+
+| Type | Purpose |
+|------|---------|
+| **Location** | A physical position in the warehouse (racking, lane, dock) |
+| **Decision** | A branching point based on conditions (probability, capacity) |
+| **Exit** | Where pallets leave the simulation |
+
+### Location Targeting
+
+Location nodes can target elements in several ways:
+
+| Target Type | Description |
+|-------------|-------------|
+| **Fixed** | Specific element by ID |
+| **Random** | Random element from a pool of IDs |
+| **Category** | Random element from a category (e.g., all "Racking") |
+| **Zone** | Elements within a named zone |
+
+### Selection Rules
+
+When using category or zone targeting, you can specify how to choose:
+- **random** - Pick any element randomly
+- **nearest** - Closest to current position
+- **furthest** - Farthest from current position
+- **round-robin** - Cycle through elements in order
+- **least-visited** - Prefer less-used elements
+- **most-available** - Prefer elements with capacity
+
+## Spawning Modes
+
+### Interval
+Spawn pallets at regular intervals:
+\`\`\`json
+{
+  "mode": "interval",
+  "duration": 3000,
+  "variance": 500
+}
+\`\`\`
+Spawns every 3 seconds (±500ms variance).
+
+### Batch
+Spawn groups of pallets together:
+\`\`\`json
+{
+  "mode": "batch",
+  "size": 5,
+  "spacing": 0,
+  "batchInterval": 10000
+}
+\`\`\`
+Spawns 5 pallets instantly, then waits 10 seconds for next batch.
+
+### Manual
+Pallets are spawned externally (via API or triggers).
+
+## Dwell Times
+
+Each location node has a **dwell time** - how long pallets wait there:
+
+| Type | Example |
+|------|---------|
+| **Fixed** | Always 2000ms |
+| **Range** | Random between 1000-3000ms |
+| **Distribution** | Normal distribution with mean/stdDev |
+
+## Example Scenario JSON
+
+\`\`\`json
+{
+  "flows": [
+    {
+      "id": "inbound-flow",
+      "name": "Inbound Receiving",
+      "color": "#3b82f6",
+      "isActive": true,
+      "entryNode": "dock",
+      "nodes": [
+        {
+          "type": "location",
+          "id": "dock",
+          "target": { "type": "fixed", "elementId": "dock-1" },
+          "action": { "dwell": { "type": "fixed", "duration": 2000 } }
+        },
+        {
+          "type": "location",
+          "id": "storage",
+          "target": {
+            "type": "category",
+            "categoryId": "racking-category-id",
+            "rule": "random"
+          },
+          "action": { "dwell": { "type": "fixed", "duration": 1000 } }
+        },
+        { "type": "exit", "id": "done" }
+      ],
+      "edges": [
+        { "id": "e1", "from": "dock", "to": "storage" },
+        { "id": "e2", "from": "storage", "to": "done" }
+      ],
+      "spawning": {
+        "mode": "interval",
+        "duration": 5000
+      }
+    }
+  ],
+  "settings": {
+    "speedMultiplier": 1
+  }
+}
+\`\`\`
+
+## Decision Nodes
+
+Add branching logic with decision nodes:
+
+\`\`\`json
+{
+  "type": "decision",
+  "id": "branch",
+  "condition": { "type": "probability", "chance": 0.7 }
+}
+\`\`\`
+
+Connect with conditional edges:
+\`\`\`json
+{ "id": "e1", "from": "branch", "to": "path-a", "condition": "true" },
+{ "id": "e2", "from": "branch", "to": "path-b", "condition": "false" }
+\`\`\`
+
+70% of pallets go to path-a, 30% to path-b.
+
+## Pallet States
+
+During simulation, pallets can be in these states:
+
+| State | Visual | Description |
+|-------|--------|-------------|
+| **Moving** | White border, glow | Traveling between locations |
+| **Dwelling** | Yellow border | Waiting at a location |
+| **Waiting** | Red border | Blocked (e.g., capacity full) |
+| **Completed** | (removed) | Exited the simulation |
+
+## Tips
+
+1. **Start simple** - Create a 2-node flow first, then add complexity
+2. **Use categories** - Category targeting is more flexible than fixed IDs
+3. **Test spawning** - Use batch mode with size=1 for debugging
+4. **Check the console** - Debug logs show pallet states and transitions
     `.trim(),
   },
 ]

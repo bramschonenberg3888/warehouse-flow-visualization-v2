@@ -5,6 +5,7 @@ import { elementRouter } from "@/server/api/routers/element"
 import { placedElementRouter } from "@/server/api/routers/placed-element"
 import { categoryRouter } from "@/server/api/routers/category"
 import { flowRouter } from "@/server/api/routers/flow"
+import { scenarioRouter } from "@/server/api/routers/scenario"
 
 export const appRouter = createTRPCRouter({
   example: exampleRouter,
@@ -13,6 +14,7 @@ export const appRouter = createTRPCRouter({
   placedElement: placedElementRouter,
   category: categoryRouter,
   flow: flowRouter,
+  scenario: scenarioRouter,
 })
 
 export type AppRouter = typeof appRouter

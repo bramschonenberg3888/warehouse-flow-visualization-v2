@@ -16,9 +16,12 @@ import {
 } from "@/components/editor/excalidraw-wrapper"
 import { ElementLibrarySidebar } from "@/components/editor/element-library-sidebar"
 import { api } from "@/trpc/react"
-
-// Default colors when template data is missing
-const DEFAULT_COLORS = { bg: "#6b7280", stroke: "#374151" }
+import type { ExcalidrawElementData } from "@/server/db/schema/element"
+import {
+  isLegacyTemplate,
+  migrateLegacyTemplate,
+  generateExcalidrawElements,
+} from "@/lib/element-utils"
 
 interface EditorPageProps {
   params: Promise<{ id: string }>
@@ -29,8 +32,9 @@ export default function EditorPage({ params }: EditorPageProps) {
   const [excalidrawAPI, setExcalidrawAPI] =
     useState<ExcalidrawImperativeAPI | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  // Track placed elements by groupId (for multi-element templates, groupId is used as the identifier)
   const placedElementsRef = useRef<
-    Map<string, { excalidrawId: string; templateId: string }>
+    Map<string, { groupId: string; templateId: string; elementIds: string[] }>
   >(new Map())
   const initializedRef = useRef(false)
 
@@ -49,65 +53,145 @@ export default function EditorPage({ params }: EditorPageProps) {
     return new Map(templates.map((t) => [t.id, t]))
   }, [templates])
 
-  // Reconstruct Excalidraw elements from saved placed elements
+  // Reconstruct Excalidraw elements from saved placed elements + orphan elements from canvasState
   const initialData = useMemo<ExcalidrawSceneData | undefined>(() => {
+    // Get orphan elements from canvasState (elements saved but not in placed_elements)
+    type CanvasStateWithElements = {
+      elements?: ExcalidrawElementType[]
+      [key: string]: unknown
+    }
+    const canvasStateWithElements = warehouse?.canvasState as
+      | CanvasStateWithElements
+      | undefined
+    const savedElements = canvasStateWithElements?.elements || []
+
+    // If no placed elements but have saved canvas elements, use those directly
     if (!placedElements || !templates || placedElements.length === 0) {
+      if (savedElements.length > 0) {
+        return {
+          elements: savedElements,
+          appState: warehouse?.canvasState || undefined,
+        }
+      }
       return undefined
     }
 
-    const elements: ExcalidrawElementType[] = placedElements.map((pe) => {
-      const template = templateMap.get(pe.elementTemplateId)
-      const data = template?.excalidrawData
+    const allElements: ExcalidrawElementType[] = []
+    const trackedGroupIds = new Set<string>()
 
-      return {
-        id: pe.excalidrawId,
-        type: data?.type || "rectangle",
-        strokeColor: data?.strokeColor || DEFAULT_COLORS.stroke,
-        backgroundColor: data?.backgroundColor || DEFAULT_COLORS.bg,
-        fillStyle: data?.fillStyle || "solid",
-        strokeWidth: data?.strokeWidth || 2,
-        strokeStyle: data?.strokeStyle || "solid",
-        roughness: data?.roughness ?? 0,
-        opacity: data?.opacity ?? 80,
-        roundness: data?.roundness ?? null,
-        x: pe.positionX,
-        y: pe.positionY,
-        width: pe.width,
-        height: pe.height,
-        angle: pe.rotation,
-        groupIds: [],
-        frameId: null,
-        index: "a0",
-        seed: Math.floor(Math.random() * 2147483647),
-        version: 1,
-        versionNonce: Math.floor(Math.random() * 2147483647),
-        isDeleted: false,
-        boundElements: null,
-        updated: Date.now(),
-        link: null,
-        locked: false,
+    for (const pe of placedElements) {
+      const template = templateMap.get(pe.elementTemplateId)
+      const data = template?.excalidrawData as ExcalidrawElementData | undefined
+
+      // Calculate scale factors based on placed vs default dimensions
+      const scaleX = pe.width / (template?.defaultWidth || 100)
+      const scaleY = pe.height / (template?.defaultHeight || 100)
+
+      // Use the placed element's excalidrawId as the group ID
+      const groupId = pe.excalidrawId
+      trackedGroupIds.add(groupId)
+
+      if (isLegacyTemplate(data)) {
+        // Legacy single-element template
+        const legacyElements = migrateLegacyTemplate(
+          data,
+          template?.defaultWidth || 100,
+          template?.defaultHeight || 100
+        )
+        const elements = generateExcalidrawElements(
+          legacyElements,
+          pe.positionX,
+          pe.positionY,
+          scaleX,
+          scaleY,
+          groupId
+        )
+        allElements.push(...elements)
+      } else {
+        // Multi-element template
+        const elements = generateExcalidrawElements(
+          data!.elements!,
+          pe.positionX,
+          pe.positionY,
+          scaleX,
+          scaleY,
+          groupId
+        )
+        allElements.push(...elements)
       }
-    })
+    }
+
+    // Add orphan elements from canvasState (elements not in placed_elements)
+    // These are elements that were drawn directly on canvas or added before tracking
+    for (const el of savedElements) {
+      const elGroupIds = el.groupIds || []
+      // Check if this element belongs to any tracked group
+      const isTracked = elGroupIds.some((gid: string) =>
+        trackedGroupIds.has(gid)
+      )
+      if (!isTracked && !el.isDeleted) {
+        allElements.push(el)
+      }
+    }
 
     return {
-      elements,
+      elements: allElements,
       appState: warehouse?.canvasState || undefined,
     }
   }, [placedElements, templates, templateMap, warehouse?.canvasState])
 
   // Initialize placedElementsRef with existing elements when data loads
   useEffect(() => {
-    if (placedElements && !initializedRef.current) {
+    if (placedElements && templates && !initializedRef.current) {
       placedElementsRef.current.clear()
       for (const pe of placedElements) {
+        // Initialize with groupId - actual element IDs will be synced after Excalidraw loads
         placedElementsRef.current.set(pe.excalidrawId, {
-          excalidrawId: pe.excalidrawId,
+          groupId: pe.excalidrawId,
           templateId: pe.elementTemplateId,
+          elementIds: [], // Will be populated by syncElementIds effect
         })
       }
       initializedRef.current = true
     }
-  }, [placedElements])
+  }, [placedElements, templates])
+
+  // Sync actual element IDs from Excalidraw after it initializes
+  // This is necessary because Excalidraw may modify element IDs when loading initialData
+  useEffect(() => {
+    if (
+      !excalidrawAPI ||
+      !initializedRef.current ||
+      placedElementsRef.current.size === 0
+    )
+      return
+
+    const sceneElements = excalidrawAPI.getSceneElements()
+
+    // Group scene elements by their groupIds
+    const elementsByGroupId = new Map<string, string[]>()
+    for (const el of sceneElements) {
+      if (el.isDeleted) continue
+      const groupIds = el.groupIds || []
+      for (const gid of groupIds) {
+        if (!elementsByGroupId.has(gid)) {
+          elementsByGroupId.set(gid, [])
+        }
+        elementsByGroupId.get(gid)!.push(el.id)
+      }
+    }
+
+    // Update placedElementsRef with actual element IDs from Excalidraw
+    for (const [groupId, value] of placedElementsRef.current.entries()) {
+      const actualIds = elementsByGroupId.get(groupId) || []
+      if (actualIds.length > 0) {
+        placedElementsRef.current.set(groupId, {
+          ...value,
+          elementIds: actualIds,
+        })
+      }
+    }
+  }, [excalidrawAPI, placedElements])
 
   const updateMutation = api.warehouse.update.useMutation({
     onSuccess: () => {
@@ -179,27 +263,62 @@ export default function EditorPage({ params }: EditorPageProps) {
       }
     }
 
+    // Store both appState and ALL elements in canvasState
+    // This ensures orphan elements (not in placed_elements) are preserved
     await updateMutation.mutateAsync({
       id: warehouse.id,
-      canvasState: sceneData.appState,
+      canvasState: {
+        ...sceneData.appState,
+        elements: visibleElements,
+      },
       thumbnailUrl,
     })
 
     const placedElementsData = Array.from(
       placedElementsRef.current.entries()
     ).map(([, value]) => {
-      const element = (elements as ExcalidrawElementType[]).find(
-        (e: ExcalidrawElementType) => e.id === value.excalidrawId
-      )
-      if (!element || element.isDeleted) return null
+      // Find all elements that belong to this placed element
+      // First try by element IDs (most reliable for newly added elements)
+      // Fall back to groupIds (for elements loaded from DB where IDs might differ)
+      let groupElements: ExcalidrawElementType[] = []
+
+      if (value.elementIds.length > 0) {
+        const elementIdSet = new Set(value.elementIds)
+        groupElements = (elements as ExcalidrawElementType[]).filter(
+          (e: ExcalidrawElementType) => elementIdSet.has(e.id) && !e.isDeleted
+        )
+      }
+
+      // Fallback: try matching by groupIds if no elements found by ID
+      if (groupElements.length === 0) {
+        groupElements = (elements as ExcalidrawElementType[]).filter(
+          (e: ExcalidrawElementType) =>
+            e.groupIds?.includes(value.groupId) && !e.isDeleted
+        )
+      }
+
+      if (groupElements.length === 0) return null
+
+      // Calculate bounding box for the group
+      let minX = Infinity,
+        minY = Infinity,
+        maxX = -Infinity,
+        maxY = -Infinity
+      for (const el of groupElements) {
+        minX = Math.min(minX, el.x)
+        minY = Math.min(minY, el.y)
+        maxX = Math.max(maxX, el.x + el.width)
+        maxY = Math.max(maxY, el.y + el.height)
+      }
+
       return {
         elementTemplateId: value.templateId,
-        excalidrawId: value.excalidrawId,
-        positionX: element.x,
-        positionY: element.y,
-        width: element.width,
-        height: element.height,
-        rotation: element.angle,
+        excalidrawId: value.groupId,
+        positionX: minX,
+        positionY: minY,
+        width: maxX - minX,
+        height: maxY - minY,
+        rotation: groupElements[0].angle || 0,
       }
     })
 
@@ -216,8 +335,12 @@ export default function EditorPage({ params }: EditorPageProps) {
   }, [excalidrawAPI, warehouse, updateMutation, syncMutation])
 
   const handleElementAdded = useCallback(
-    (excalidrawId: string, templateId: string) => {
-      placedElementsRef.current.set(excalidrawId, { excalidrawId, templateId })
+    (groupId: string, templateId: string, elementIds: string[] = []) => {
+      placedElementsRef.current.set(groupId, {
+        groupId,
+        templateId,
+        elementIds,
+      })
       setHasUnsavedChanges(true)
     },
     []

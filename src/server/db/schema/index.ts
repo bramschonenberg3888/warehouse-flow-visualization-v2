@@ -12,3 +12,6 @@ export * from "./placed-element"
 
 // Flows (goods movement paths)
 export * from "./flow"
+
+// Scenarios (flow simulation configurations)
+export * from "./scenario"

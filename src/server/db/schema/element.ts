@@ -44,26 +44,56 @@ export const categoriesRelations = relations(categories, ({ many }) => ({
   elements: many(elementTemplates),
 }))
 
+// Single element within a multi-element template (stores relative position to group origin)
+export interface ExcalidrawTemplateElement {
+  type: "rectangle" | "ellipse" | "diamond" | "line" | "arrow" | "text"
+  // Position relative to group origin (0,0)
+  relativeX: number
+  relativeY: number
+  // Element dimensions
+  width: number
+  height: number
+  angle: number
+  // Styling (template-controlled)
+  backgroundColor: string
+  strokeColor: string
+  strokeWidth: number
+  strokeStyle: "solid" | "dashed" | "dotted"
+  fillStyle: "solid" | "hachure" | "cross-hatch"
+  roughness: number
+  opacity: number
+  roundness: { type: number } | null
+  // For text elements
+  text?: string
+  fontSize?: number
+  fontFamily?: number
+}
+
 // Type for Excalidraw element data stored in JSONB
 // These are TEMPLATE-CONTROLLED properties (sync to all instances)
 // Instance-controlled properties (position, size, rotation) are stored in placed_elements
 export interface ExcalidrawElementData {
+  // Version for format detection (undefined or 1 = legacy single-element, 2 = multi-element)
+  version?: 1 | 2
+  // Legacy fields (version 1) - kept for backwards compatibility
   // Shape type - defines the element's form
-  type: "rectangle" | "ellipse" | "diamond" | "line" | "arrow"
+  type?: "rectangle" | "ellipse" | "diamond" | "line" | "arrow"
   // Colors - for brand consistency and recognition
-  backgroundColor: string
-  strokeColor: string
+  backgroundColor?: string
+  strokeColor?: string
   // Stroke properties - visual style
-  strokeWidth: number
-  strokeStyle: "solid" | "dashed" | "dotted"
+  strokeWidth?: number
+  strokeStyle?: "solid" | "dashed" | "dotted"
   // Fill style - visual pattern
-  fillStyle: "solid" | "hachure" | "cross-hatch"
+  fillStyle?: "solid" | "hachure" | "cross-hatch"
   // Roughness - hand-drawn "sketchiness" (0-2)
-  roughness: number
+  roughness?: number
   // Opacity - transparency (0-100)
-  opacity: number
+  opacity?: number
   // Roundness - corner style (null = sharp, object = rounded)
-  roundness: { type: number } | null
+  roundness?: { type: number } | null
+  // Version 2 field - array of elements with relative positions
+  elements?: ExcalidrawTemplateElement[]
 }
 
 export type ElementTemplate = typeof elementTemplates.$inferSelect

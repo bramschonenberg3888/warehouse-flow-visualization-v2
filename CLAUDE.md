@@ -7,37 +7,31 @@ Next.js 16.1.1 web app for designing warehouse layouts with draggable elements a
 ```
 src/
 ├── app/                        # Next.js App Router
-│   ├── (dashboard)/            # Dashboard routes
-│   │   ├── elements/           # Element template management
-│   │   ├── flows/              # Flow definition CRUD
-│   │   ├── visualization/      # Flow simulation & animation
-│   │   ├── warehouses/         # Warehouse management & editor
-│   │   └── wiki/               # In-app documentation
+│   ├── (dashboard)/            # Dashboard routes (elements, flows, scenarios, visualization, warehouses, wiki)
 │   └── api/                    # NextAuth & tRPC endpoints
 ├── components/
 │   ├── ui/                     # Shadcn/ui components
 │   ├── editor/                 # Excalidraw wrapper & element sidebar
+│   ├── element/                # Element template forms & display
 │   ├── flow-editor/            # Flow editor canvas & drag-drop sequence
 │   ├── layout/                 # Header & sidebar navigation
 │   ├── visualization/          # Canvas-based flow animation
-│   ├── warehouse/              # Warehouse cards & forms
-│   └── wiki/                   # Wiki content renderer
+│   └── warehouse/, wiki/       # Domain components
 ├── hooks/                      # Custom React hooks
+├── lib/
+│   ├── scenario-engine/        # Scenario simulation engine
+│   └── *.ts                    # Utilities (element-utils, pathfinding, wiki-content)
 ├── server/
-│   ├── api/routers/            # tRPC domain routers
-│   └── db/schema/              # Drizzle schemas
-├── trpc/                       # Client-side tRPC
-├── lib/                        # Utilities & wiki content
-├── auth.ts                     # NextAuth configuration
-└── env.ts                      # Type-safe environment variables
+│   ├── api/routers/            # tRPC routers (category, element, flow, placed-element, scenario, warehouse)
+│   └── db/schema/              # Drizzle schemas (one file per table)
+└── trpc/                       # Client-side tRPC
 tests/                          # Vitest unit + Playwright E2E
 migrations/                     # Drizzle database migrations
 ```
 
 ## Organization Rules
 
-- **API routes**: `/app/api` - one file per route
-- **tRPC routers**: `/server/api/routers` - one router per domain (category, element, flow, placed-element, warehouse)
+- **tRPC routers**: `/server/api/routers` - one router per domain
 - **Components**: `/components` - one component per file, grouped by domain
 - **Database schemas**: `/server/db/schema` - one file per table
 - **Tests**: `/tests/unit` and `/tests/e2e` - mirror source structure
@@ -58,30 +52,32 @@ bun run db:generate && bun run db:push
 
 ## Tech Stack
 
-Next.js 16.1.1, React 19, TypeScript 5.9, tRPC 11, PostgreSQL + Drizzle ORM, NextAuth 5 + @auth/core, Tailwind CSS 4 + shadcn/ui, Excalidraw, Vitest + Playwright
+Next.js 16.1.1, React 19, TypeScript 5.9, tRPC 11, PostgreSQL + Drizzle ORM, NextAuth 5, Tailwind CSS 4 + shadcn/ui, Excalidraw, @dnd-kit, Vitest + Playwright
 
 ## Design Decisions
 
 ### Element Instance vs Template Properties (Full Sync Model)
 
-**Template-Controlled** (sync from template, for brand consistency):
+**Template-Controlled**: type, backgroundColor, strokeColor, strokeWidth, strokeStyle, fillStyle, roughness, roundness, opacity
 
-- type, backgroundColor, strokeColor, strokeWidth, strokeStyle
-- fillStyle, roughness, roundness, opacity
+**Instance-Controlled**: position (x, y), size (width, height), rotation, label, metadata
 
-**Instance-Controlled** (per placement, for warehouse flexibility):
+When a template is updated, all placed instances reflect visual changes on next load.
 
-- position (x, y), size (width, height), rotation, label, metadata
+### Documentation
 
-When a template is updated, all placed instances reflect visual changes on next load. See the in-app Wiki for details.
+Wiki content is in `src/lib/wiki-content.ts`. Update when changing user-facing behavior.
 
-## Documentation
+## Design Challenges
 
-When making changes that affect user-facing behavior, update the in-app Wiki:
+### Static vs Mobile Elements
 
-- Wiki content is in `src/lib/wiki-content.ts`
-- Add new articles or update existing ones to reflect changes
-- Key articles: "Element Properties" (Full Sync behavior), "Getting Started"
+Currently, pallets are simple colored squares. Future enhancement: classify elements as:
+
+- **Static**: Part of layout (racking, lanes, zones, walls)
+- **Mobile**: Can move (pallets, forklifts, AGVs, workers)
+
+Implementation: Add `elementBehavior: 'static' | 'mobile'` to templates. Mobile elements spawned by scenario engine with visual appearance from template.
 
 ## Future Features
 
@@ -89,4 +85,4 @@ When making changes that affect user-facing behavior, update the in-app Wiki:
 
 ## Architecture Alternatives
 
-Canvas editor alternatives to Excalidraw are documented in `docs/canvas-alternatives.md`. Key candidates: ReactFlow (best for flow visualization), React-Konva (best for full control).
+Canvas editor alternatives documented in `docs/canvas-alternatives.md`. Key candidates: ReactFlow, React-Konva.
