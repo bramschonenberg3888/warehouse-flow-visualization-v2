@@ -6,6 +6,7 @@ import type {
   ElementTemplate,
   Warehouse,
 } from "@/server/db/schema"
+import type { ExcalidrawElementType } from "@/components/editor/excalidraw-wrapper"
 import type {
   ScenarioVisualizationState,
   ScenarioPalletState,
@@ -62,6 +63,24 @@ export function ScenarioVisualizationCanvas({
     return map
   }, [placedElements])
 
+  // Build set of excalidrawIds that are tracked as placedElements
+  const trackedGroupIds = useMemo(() => {
+    return new Set(placedElements.map((pe) => pe.excalidrawId))
+  }, [placedElements])
+
+  // Extract and filter orphan elements from warehouse canvasState
+  const filteredOrphanElements = useMemo(() => {
+    const canvasElements =
+      (warehouse?.canvasState?.["elements"] as
+        | ExcalidrawElementType[]
+        | undefined) ?? []
+    return canvasElements.filter((el) => {
+      if (el.isDeleted) return false
+      const groupIds = el.groupIds || []
+      return !groupIds.some((gid: string) => trackedGroupIds.has(gid))
+    })
+  }, [warehouse?.canvasState, trackedGroupIds])
+
   // Resize handler
   useEffect(() => {
     const container = containerRef.current
@@ -78,23 +97,37 @@ export function ScenarioVisualizationCanvas({
     return () => resizeObserver.disconnect()
   }, [])
 
-  // Calculate view transform to fit all elements
+  // Calculate view transform to fit all elements (including orphans)
   const viewTransform = useMemo(() => {
     // Calculate bounds
     let minX = 0,
       minY = 0,
       maxX = 800,
       maxY = 600
-    if (placedElements.length > 0) {
+
+    const hasElements =
+      placedElements.length > 0 || filteredOrphanElements.length > 0
+
+    if (hasElements) {
       minX = Infinity
       minY = Infinity
       maxX = -Infinity
       maxY = -Infinity
+
+      // Include placed elements in bounds
       for (const element of placedElements) {
         minX = Math.min(minX, element.positionX)
         minY = Math.min(minY, element.positionY)
         maxX = Math.max(maxX, element.positionX + element.width)
         maxY = Math.max(maxY, element.positionY + element.height)
+      }
+
+      // Include orphan elements in bounds
+      for (const element of filteredOrphanElements) {
+        minX = Math.min(minX, element.x)
+        minY = Math.min(minY, element.y)
+        maxX = Math.max(maxX, element.x + element.width)
+        maxY = Math.max(maxY, element.y + element.height)
       }
     }
 
@@ -111,7 +144,7 @@ export function ScenarioVisualizationCanvas({
       -minY + CANVAS_PADDING + (canvasSize.height / scale - contentHeight) / 2
 
     return { offsetX, offsetY, scale }
-  }, [canvasSize, placedElements])
+  }, [canvasSize, placedElements, filteredOrphanElements])
 
   // Transform world coordinates to canvas coordinates
   const worldToCanvas = useCallback(
@@ -222,6 +255,61 @@ export function ScenarioVisualizationCanvas({
       }
     }
 
+    // Draw orphan elements (elements drawn directly on canvas, not from templates)
+    for (const element of filteredOrphanElements) {
+      const pos = worldToCanvas({ x: element.x, y: element.y })
+      const width = element.width * viewTransform.scale
+      const height = element.height * viewTransform.scale
+
+      ctx.save()
+
+      // Apply rotation around element center
+      if (element.angle && element.angle !== 0) {
+        const centerX = pos.x + width / 2
+        const centerY = pos.y + height / 2
+        ctx.translate(centerX, centerY)
+        ctx.rotate(element.angle)
+        ctx.translate(-centerX, -centerY)
+      }
+
+      // Draw element background
+      ctx.fillStyle = element.backgroundColor || "#6b7280"
+      ctx.globalAlpha = (element.opacity ?? 100) / 100
+
+      const hasRoundness = element.roundness?.type && element.roundness.type > 0
+      const radius = hasRoundness ? Math.min(width, height) * 0.1 : 0
+
+      if (radius > 0) {
+        drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
+        ctx.fill()
+      } else {
+        ctx.fillRect(pos.x, pos.y, width, height)
+      }
+
+      // Draw element stroke
+      ctx.globalAlpha = 1
+      ctx.strokeStyle = element.strokeColor || "#374151"
+      ctx.lineWidth = (element.strokeWidth || 2) * viewTransform.scale
+
+      if (element.strokeStyle === "dashed") {
+        ctx.setLineDash([8, 4])
+      } else if (element.strokeStyle === "dotted") {
+        ctx.setLineDash([2, 2])
+      } else {
+        ctx.setLineDash([])
+      }
+
+      if (radius > 0) {
+        drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
+        ctx.stroke()
+      } else {
+        ctx.strokeRect(pos.x, pos.y, width, height)
+      }
+
+      ctx.setLineDash([])
+      ctx.restore()
+    }
+
     // Draw flow paths from scenario
     if (scenario) {
       for (const flow of scenario.flows) {
@@ -239,6 +327,7 @@ export function ScenarioVisualizationCanvas({
     worldToCanvas,
     templateMap,
     getElementCenter,
+    filteredOrphanElements,
   ])
 
   // Draw animated pallets (animation canvas)

@@ -45,13 +45,17 @@ export function ScenarioBuilder({ scenarioId }: ScenarioBuilderProps) {
   const { data: scenario, isLoading: scenarioLoading } =
     api.scenario.getById.useQuery({ id: scenarioId }, { enabled: !isNew })
 
-  // Get placed elements and categories for the selected warehouse
+  // Get placed elements, categories, and existing flows for the selected warehouse
   const [warehouseId, setWarehouseId] = useState("")
   const { data: placedElements } = api.placedElement.getByWarehouse.useQuery(
     { warehouseId },
     { enabled: !!warehouseId }
   )
   const { data: categories } = api.category.getAll.useQuery()
+  const { data: existingFlows } = api.flow.getByWarehouse.useQuery(
+    { warehouseId },
+    { enabled: !!warehouseId }
+  )
 
   // Form state
   const [name, setName] = useState("")
@@ -351,6 +355,8 @@ export function ScenarioBuilder({ scenarioId }: ScenarioBuilderProps) {
             onUpdateFlow={handleUpdateFlow}
             onDeleteFlow={handleDeleteFlow}
             onDuplicateFlow={handleDuplicateFlow}
+            existingFlows={existingFlows ?? []}
+            placedElements={placedElements ?? []}
           />
           <div className="flex-1">
             <FlowBuilderPanel

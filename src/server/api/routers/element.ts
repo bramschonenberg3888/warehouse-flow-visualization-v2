@@ -7,6 +7,7 @@ import {
   categories,
   placedElements,
   type ExcalidrawElementData,
+  type ElementBehavior,
 } from "@/server/db/schema"
 
 export const elementRouter = createTRPCRouter({
@@ -21,6 +22,7 @@ export const elementRouter = createTRPCRouter({
         icon: elementTemplates.icon,
         defaultWidth: elementTemplates.defaultWidth,
         defaultHeight: elementTemplates.defaultHeight,
+        elementBehavior: elementTemplates.elementBehavior,
         isSystem: elementTemplates.isSystem,
         createdAt: elementTemplates.createdAt,
         category: categories,
@@ -58,6 +60,7 @@ export const elementRouter = createTRPCRouter({
           icon: elementTemplates.icon,
           defaultWidth: elementTemplates.defaultWidth,
           defaultHeight: elementTemplates.defaultHeight,
+          elementBehavior: elementTemplates.elementBehavior,
           isSystem: elementTemplates.isSystem,
           createdAt: elementTemplates.createdAt,
           category: categories,
@@ -79,6 +82,10 @@ export const elementRouter = createTRPCRouter({
         excalidrawData: z.custom<ExcalidrawElementData>(),
         defaultWidth: z.number().int().positive(),
         defaultHeight: z.number().int().positive(),
+        elementBehavior: z
+          .custom<ElementBehavior>()
+          .optional()
+          .default("static"),
       })
     )
     .mutation(async ({ input }) => {
@@ -104,6 +111,7 @@ export const elementRouter = createTRPCRouter({
         excalidrawData: z.custom<ExcalidrawElementData>().optional(),
         defaultWidth: z.number().int().positive().optional(),
         defaultHeight: z.number().int().positive().optional(),
+        elementBehavior: z.custom<ElementBehavior>().optional(),
       })
     )
     .mutation(async ({ input }) => {

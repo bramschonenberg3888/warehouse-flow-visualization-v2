@@ -1,6 +1,6 @@
 # Warehouse Flow Visualization
 
-Next.js web app for designing warehouse layouts with draggable elements and visualizing goods movement flow paths using an Excalidraw-based canvas editor.
+Next.js web app for designing warehouse layouts on a grid-based canvas and visualizing goods movement flow paths.
 
 ## Project Structure
 
@@ -11,14 +11,15 @@ src/
 │   └── api/                    # NextAuth & tRPC endpoints
 ├── components/
 │   ├── ui/                     # Shadcn/ui components
-│   ├── editor/                 # Excalidraw wrapper & element sidebar
-│   ├── flow-editor/            # Flow editor canvas & drag-drop sequence
+│   ├── warehouse-editor/       # Grid-based warehouse layout editor
+│   ├── flow-editor/            # Flow path editor (grid cell selection)
 │   ├── scenario-builder/       # Visual scenario editor
 │   ├── visualization/          # Canvas-based flow animation
-│   └── layout/, warehouse/, wiki/
+│   └── editor/, layout/, warehouse/, wiki/
 ├── hooks/                      # Custom React hooks
 ├── lib/
 │   ├── scenario-engine/        # Scenario simulation engine
+│   ├── grid-config.ts          # Grid configuration (40px cells)
 │   └── *.ts                    # Utilities (element-utils, pathfinding, wiki-content)
 ├── server/
 │   ├── api/routers/            # tRPC routers (one per domain)
@@ -51,50 +52,38 @@ bun run db:generate && bun run db:push
 
 ## Tech Stack
 
-Next.js 16.1.1, React 19, TypeScript 5.9, tRPC 11, PostgreSQL + Drizzle ORM, NextAuth 5, Tailwind CSS 4 + shadcn/ui, Excalidraw, @dnd-kit, Vitest + Playwright
+Next.js 16, React 19, TypeScript 5.9, tRPC 11, PostgreSQL + Drizzle ORM, NextAuth 5, Tailwind CSS 4 + shadcn/ui, @dnd-kit, Vitest + Playwright
 
-## Design Decisions
+## Core Concepts
 
-### Element Instance vs Template Properties (Full Sync Model)
+### Grid-Based Warehouse Model
 
-**Template-Controlled**: type, backgroundColor, strokeColor, strokeWidth, strokeStyle, fillStyle, roughness, roundness, opacity
+The warehouse is fundamentally a **grid** of cells:
+
+- **Cell size**: 40px (constant in `lib/grid-config.ts`)
+- **Movement**: 4-directional (up, down, left, right)
+- **Warehouse dimensions**: Defined per warehouse (`gridColumns`, `gridRows`)
+
+### Element Behavior Classification
+
+Elements are classified via `elementBehavior` field:
+
+- **Static**: Fixed fixtures (racking, zones, walls) - placed ON the grid, block movement
+- **Mobile**: Can move during simulation (pallets, forklifts) - spawned by scenario engine
+
+### Workflow
+
+1. **Create Warehouse** → Define grid size (columns × rows)
+2. **Layout Editor** → Place static elements on grid cells
+3. **Flow Editor** → Click grid cells to define movement paths (`grid:{col}:{row}`)
+4. **Visualization** → Animate mobile elements along flow paths
+
+### Element Template vs Instance
+
+**Template-Controlled**: type, backgroundColor, strokeColor, strokeWidth, strokeStyle, fillStyle, roughness, roundness, opacity, elementBehavior
 
 **Instance-Controlled**: position (x, y), size (width, height), rotation, label, metadata
 
-### Documentation
+## Documentation
 
 Wiki content is in `src/lib/wiki-content.ts`. Update when changing user-facing behavior.
-
-## Design Challenges
-
-### Static vs Mobile Elements
-
-Currently, pallets are simple colored squares. Future enhancement: classify elements as:
-
-- **Static**: Part of layout (racking, lanes, zones, walls)
-- **Mobile**: Can move (pallets, forklifts, AGVs, workers)
-
-Implementation: Add `elementBehavior: 'static' | 'mobile'` to templates. Mobile elements spawned by scenario engine with visual appearance from template.
-
-## Future Features
-
-- **CAD Import via Lucidchart**: Upload CAD drawings for warehouse layout backgrounds
-
-## Architecture Alternatives
-
-Canvas editor alternatives documented in `docs/canvas-alternatives.md`. Key candidates: ReactFlow, React-Konva.
-
-## Next Steps
-
-### Test Scenario Builder UI
-
-The scenario builder was upgraded from raw JSON editing to a visual builder. Test:
-
-1. Create new scenario via UI
-2. Add location steps (Specific/Category/Random targets)
-3. Add decision steps (Probability/Capacity/Time/Counter conditions)
-4. Configure spawning modes (Interval/Batch/Manual)
-5. Drag-and-drop reorder steps
-6. Verify JSON tab syncs with visual builder
-7. Save/load scenarios correctly
-8. Run visualization to confirm execution

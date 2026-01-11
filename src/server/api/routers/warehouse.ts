@@ -28,6 +28,8 @@ export const warehouseRouter = createTRPCRouter({
       z.object({
         name: z.string().min(1).max(100),
         description: z.string().max(500).optional(),
+        gridColumns: z.number().int().min(5).max(100).default(20),
+        gridRows: z.number().int().min(5).max(100).default(15),
       })
     )
     .mutation(async ({ input }) => {
@@ -36,6 +38,8 @@ export const warehouseRouter = createTRPCRouter({
         .values({
           name: input.name,
           description: input.description,
+          gridColumns: input.gridColumns,
+          gridRows: input.gridRows,
         })
         .returning()
 
@@ -49,6 +53,8 @@ export const warehouseRouter = createTRPCRouter({
         id: z.string().uuid(),
         name: z.string().min(1).max(100).optional(),
         description: z.string().max(500).optional(),
+        gridColumns: z.number().int().min(5).max(100).optional(),
+        gridRows: z.number().int().min(5).max(100).optional(),
         canvasState: z.custom<CanvasState>().optional(),
         thumbnailUrl: z.string().optional(),
       })

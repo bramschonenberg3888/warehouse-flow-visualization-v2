@@ -87,11 +87,26 @@ export function ExcalidrawWrapper({
     [onChange]
   )
 
+  // Merge grid mode into initial data appState
+  const initialDataWithGrid = initialData
+    ? {
+        ...initialData,
+        appState: {
+          ...initialData.appState,
+          gridModeEnabled: true,
+        },
+      }
+    : {
+        appState: {
+          gridModeEnabled: true,
+        },
+      }
+
   return (
     <div className="h-full w-full">
       <Excalidraw
         excalidrawAPI={(api) => setExcalidrawAPI(api)}
-        initialData={initialData as ExcalidrawElementType}
+        initialData={initialDataWithGrid as ExcalidrawElementType}
         onChange={handleChange}
         theme="light"
         UIOptions={{

@@ -140,6 +140,23 @@ interface SortableItemProps {
   onRemove: () => void
 }
 
+// Helper to get display label for sequence item
+function getItemLabel(id: string, element: PlacedElement | undefined): string {
+  // Check if this is a grid cell (format: "grid:{col}:{row}")
+  if (id.startsWith("grid:")) {
+    const parts = id.split(":")
+    if (parts.length === 3) {
+      return `Cell (${parts[1]}, ${parts[2]})`
+    }
+  }
+  // Regular placed element
+  return element?.label || "Unknown"
+}
+
+function isGridCell(id: string): boolean {
+  return id.startsWith("grid:")
+}
+
 function SortableItem({ id, index, element, onRemove }: SortableItemProps) {
   const {
     attributes,
@@ -172,12 +189,18 @@ function SortableItem({ id, index, element, onRemove }: SortableItemProps) {
         <GripVertical className="h-4 w-4" />
       </button>
 
-      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
+      <div
+        className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-medium ${
+          isGridCell(id)
+            ? "bg-blue-500 text-white"
+            : "bg-primary text-primary-foreground"
+        }`}
+      >
         {index + 1}
       </div>
 
       <span className="flex-1 truncate text-sm">
-        {element?.label || `Element ${index + 1}`}
+        {getItemLabel(id, element)}
       </span>
 
       <button

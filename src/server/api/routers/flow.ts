@@ -4,6 +4,25 @@ import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import { flows } from "@/server/db/schema"
 
+// Sequence items can be either UUIDs (placed elements) or grid cell IDs (grid:{col}:{row})
+const sequenceItemSchema = z.string().refine(
+  (val) => {
+    // Check if it's a grid cell ID
+    if (val.startsWith("grid:")) {
+      const parts = val.split(":")
+      if (parts.length !== 3) return false
+      const col = parseInt(parts[1]!, 10)
+      const row = parseInt(parts[2]!, 10)
+      return !isNaN(col) && !isNaN(row) && col >= 0 && row >= 0
+    }
+    // Otherwise validate as UUID
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    return uuidRegex.test(val)
+  },
+  { message: "Must be a valid UUID or grid cell ID (grid:{col}:{row})" }
+)
+
 export const flowRouter = createTRPCRouter({
   // Get all flows for a warehouse
   getByWarehouse: publicProcedure
@@ -32,7 +51,7 @@ export const flowRouter = createTRPCRouter({
         warehouseId: z.string().uuid(),
         name: z.string().min(1).max(100),
         description: z.string().max(500).optional(),
-        elementSequence: z.array(z.string().uuid()),
+        elementSequence: z.array(sequenceItemSchema),
         color: z
           .string()
           .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -52,7 +71,7 @@ export const flowRouter = createTRPCRouter({
         id: z.string().uuid(),
         name: z.string().min(1).max(100).optional(),
         description: z.string().max(500).optional(),
-        elementSequence: z.array(z.string().uuid()).optional(),
+        elementSequence: z.array(sequenceItemSchema).optional(),
         color: z
           .string()
           .regex(/^#[0-9A-Fa-f]{6}$/)

@@ -29,7 +29,10 @@ import {
   type ExcalidrawSceneData,
 } from "@/components/editor/excalidraw-wrapper"
 import { api } from "@/trpc/react"
-import type { ExcalidrawElementData } from "@/server/db/schema/element"
+import type {
+  ExcalidrawElementData,
+  ElementBehavior,
+} from "@/server/db/schema/element"
 import {
   isLegacyTemplate,
   migrateLegacyTemplate,
@@ -67,6 +70,8 @@ export default function EditElementPage({ params }: EditElementPageProps) {
     useState<ExcalidrawImperativeAPI | null>(null)
   const [name, setName] = useState("")
   const [categoryId, setCategoryId] = useState<string>("")
+  const [elementBehavior, setElementBehavior] =
+    useState<ElementBehavior>("static")
   const [hasElements, setHasElements] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
@@ -105,6 +110,7 @@ export default function EditElementPage({ params }: EditElementPageProps) {
   if (element && !initialized) {
     setName(element.name)
     setCategoryId(element.categoryId || "")
+    setElementBehavior(element.elementBehavior || "static")
     setInitialized(true)
   }
 
@@ -123,7 +129,6 @@ export default function EditElementPage({ params }: EditElementPageProps) {
     if (!element?.excalidrawData) return undefined
 
     const data = element.excalidrawData as ExcalidrawElementData
-    const groupId = crypto.randomUUID()
 
     // Handle legacy single-element format
     if (isLegacyTemplate(data)) {
@@ -133,27 +138,13 @@ export default function EditElementPage({ params }: EditElementPageProps) {
         element.defaultHeight
       )
       return {
-        elements: generateExcalidrawElements(
-          legacyElements,
-          100,
-          100,
-          1,
-          1,
-          groupId
-        ),
+        elements: generateExcalidrawElements(legacyElements, 100, 100, 1, 1),
       }
     }
 
     // Handle version 2 multi-element format
     return {
-      elements: generateExcalidrawElements(
-        data.elements!,
-        100,
-        100,
-        1,
-        1,
-        groupId
-      ),
+      elements: generateExcalidrawElements(data.elements!, 100, 100, 1, 1),
     }
   }, [element])
 
@@ -215,12 +206,21 @@ export default function EditElementPage({ params }: EditElementPageProps) {
       id: element.id,
       name: name.trim(),
       categoryId: categoryId || null,
+      elementBehavior,
       icon,
       defaultWidth: bbox.width || 100,
       defaultHeight: bbox.height || 100,
       excalidrawData,
     })
-  }, [excalidrawAPI, name, categoryId, categories, element, updateMutation])
+  }, [
+    excalidrawAPI,
+    name,
+    categoryId,
+    elementBehavior,
+    categories,
+    element,
+    updateMutation,
+  ])
 
   if (isLoading) {
     return (
@@ -349,6 +349,28 @@ export default function EditElementPage({ params }: EditElementPageProps) {
               </PopoverContent>
             </Popover>
           </div>
+          <Select
+            value={elementBehavior}
+            onValueChange={(v) => setElementBehavior(v as ElementBehavior)}
+          >
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Behavior" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="static">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-gray-500" />
+                  Static
+                </div>
+              </SelectItem>
+              <SelectItem value="mobile">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                  Mobile
+                </div>
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <Button onClick={handleSave} disabled={!canSave}>
           {updateMutation.isPending ? (

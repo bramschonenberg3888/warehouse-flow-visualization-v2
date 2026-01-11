@@ -20,6 +20,8 @@ export function CreateWarehouseDialog() {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [gridColumns, setGridColumns] = useState(20)
+  const [gridRows, setGridRows] = useState(15)
   const router = useRouter()
   const utils = api.useUtils()
 
@@ -29,6 +31,8 @@ export function CreateWarehouseDialog() {
       setOpen(false)
       setName("")
       setDescription("")
+      setGridColumns(20)
+      setGridRows(15)
       // Navigate to the editor
       if (data) {
         router.push(`/warehouses/${data.id}/editor`)
@@ -42,6 +46,8 @@ export function CreateWarehouseDialog() {
     createMutation.mutate({
       name: name.trim(),
       description: description.trim() || undefined,
+      gridColumns,
+      gridRows,
     })
   }
 
@@ -84,6 +90,54 @@ export function CreateWarehouseDialog() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Grid Size</label>
+              <p className="text-xs text-muted-foreground">
+                Define the warehouse grid dimensions (each cell is 40×40 pixels)
+              </p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1">
+                  <label
+                    htmlFor="gridColumns"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Columns
+                  </label>
+                  <Input
+                    id="gridColumns"
+                    type="number"
+                    min={5}
+                    max={100}
+                    value={gridColumns}
+                    onChange={(e) =>
+                      setGridColumns(parseInt(e.target.value) || 20)
+                    }
+                  />
+                </div>
+                <span className="mt-5 text-muted-foreground">×</span>
+                <div className="flex-1">
+                  <label
+                    htmlFor="gridRows"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Rows
+                  </label>
+                  <Input
+                    id="gridRows"
+                    type="number"
+                    min={5}
+                    max={100}
+                    value={gridRows}
+                    onChange={(e) =>
+                      setGridRows(parseInt(e.target.value) || 15)
+                    }
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {gridColumns * 40} × {gridRows * 40} pixels
+              </p>
             </div>
           </div>
           <DialogFooter>

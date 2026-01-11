@@ -26,8 +26,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import type { UIFlow } from "./types"
+import type { UIFlow, UILocationStep } from "./types"
 import { createDefaultFlow } from "./types"
+import type { Flow, PlacedElement } from "@/server/db/schema"
 
 const colorPresets = [
   "#3b82f6", // blue
@@ -48,6 +49,8 @@ interface FlowListSidebarProps {
   onUpdateFlow: (flowId: string, updates: Partial<UIFlow>) => void
   onDeleteFlow: (flowId: string) => void
   onDuplicateFlow: (flowId: string) => void
+  existingFlows: Flow[]
+  placedElements: PlacedElement[]
 }
 
 export function FlowListSidebar({
@@ -58,12 +61,19 @@ export function FlowListSidebar({
   onUpdateFlow,
   onDeleteFlow,
   onDuplicateFlow,
+  existingFlows,
+  placedElements,
 }: FlowListSidebarProps) {
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [newFlowName, setNewFlowName] = useState("")
   const [newFlowColor, setNewFlowColor] = useState(colorPresets[0] ?? "#3b82f6")
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [editingName, setEditingName] = useState("")
+  const [addMode, setAddMode] = useState<"new" | "import">("new")
+  const [selectedImportFlowId, setSelectedImportFlowId] = useState<string>("")
+
+  // Build element lookup for import
+  const elementMap = new Map(placedElements.map((e) => [e.id, e]))
 
   const handleAddFlow = () => {
     if (!newFlowName.trim()) return
@@ -76,6 +86,41 @@ export function FlowListSidebar({
     setShowAddDialog(false)
     setNewFlowName("")
     setNewFlowColor(colorPresets[0] ?? "#3b82f6")
+  }
+
+  const handleImportFlow = () => {
+    const existingFlow = existingFlows.find(
+      (f) => f.id === selectedImportFlowId
+    )
+    if (!existingFlow) return
+
+    // Convert database flow to UIFlow
+    const flow = createDefaultFlow(existingFlow.name)
+    flow.color = existingFlow.color
+
+    // Convert element sequence to location steps
+    const steps: UILocationStep[] = []
+    for (const elementId of existingFlow.elementSequence) {
+      const element = elementMap.get(elementId)
+      if (!element) continue
+      steps.push({
+        id: crypto.randomUUID(),
+        type: "location",
+        target: {
+          type: "fixed",
+          elementId: elementId,
+        },
+        dwell: { type: "fixed", duration: 2000 },
+      })
+    }
+
+    flow.steps = steps
+    onAddFlow(flow)
+    onSelectFlow(flow.id)
+
+    setShowAddDialog(false)
+    setSelectedImportFlowId("")
+    setAddMode("new")
   }
 
   const handleStartRename = (flow: UIFlow) => {
@@ -238,54 +283,130 @@ export function FlowListSidebar({
       </ScrollArea>
 
       {/* Add Flow Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      <Dialog
+        open={showAddDialog}
+        onOpenChange={(open) => {
+          setShowAddDialog(open)
+          if (!open) {
+            setAddMode("new")
+            setSelectedImportFlowId("")
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Flow</DialogTitle>
             <DialogDescription>
-              Create a new flow to define how items move through the warehouse.
+              Create a new flow or import an existing one from the warehouse.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Flow Name</label>
-              <Input
-                value={newFlowName}
-                onChange={(e) => setNewFlowName(e.target.value)}
-                placeholder="e.g., Inbound Processing"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleAddFlow()
-                }}
-              />
+            {/* Mode selector */}
+            <div className="flex gap-2">
+              <Button
+                variant={addMode === "new" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setAddMode("new")}
+                className="flex-1"
+              >
+                Create New
+              </Button>
+              <Button
+                variant={addMode === "import" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setAddMode("import")}
+                className="flex-1"
+                disabled={existingFlows.length === 0}
+              >
+                Import Existing
+              </Button>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Color</label>
-              <div className="flex gap-2">
-                {colorPresets.map((color) => (
-                  <button
-                    key={color}
-                    className={`h-8 w-8 rounded border transition-transform ${
-                      newFlowColor === color
-                        ? "ring-2 ring-primary ring-offset-2"
-                        : "hover:scale-110"
-                    }`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => setNewFlowColor(color)}
+            {addMode === "new" ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Flow Name</label>
+                  <Input
+                    value={newFlowName}
+                    onChange={(e) => setNewFlowName(e.target.value)}
+                    placeholder="e.g., Inbound Processing"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddFlow()
+                    }}
                   />
-                ))}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Color</label>
+                  <div className="flex gap-2">
+                    {colorPresets.map((color) => (
+                      <button
+                        key={color}
+                        className={`h-8 w-8 rounded border transition-transform ${
+                          newFlowColor === color
+                            ? "ring-2 ring-primary ring-offset-2"
+                            : "hover:scale-110"
+                        }`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => setNewFlowColor(color)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Flow</label>
+                {existingFlows.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No flows available for this warehouse. Create flows in the
+                    Flow Editor first.
+                  </p>
+                ) : (
+                  <div className="space-y-1 max-h-48 overflow-auto rounded border p-2">
+                    {existingFlows.map((flow) => (
+                      <button
+                        key={flow.id}
+                        className={`w-full flex items-center gap-2 rounded px-3 py-2 text-left text-sm transition-colors ${
+                          selectedImportFlowId === flow.id
+                            ? "bg-accent text-accent-foreground"
+                            : "hover:bg-muted"
+                        }`}
+                        onClick={() => setSelectedImportFlowId(flow.id)}
+                      >
+                        <div
+                          className="h-3 w-3 rounded-full shrink-0"
+                          style={{ backgroundColor: flow.color }}
+                        />
+                        <span className="truncate">{flow.name}</span>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {flow.elementSequence.length} steps
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={handleAddFlow} disabled={!newFlowName.trim()}>
-              Add Flow
-            </Button>
+            {addMode === "new" ? (
+              <Button onClick={handleAddFlow} disabled={!newFlowName.trim()}>
+                Add Flow
+              </Button>
+            ) : (
+              <Button
+                onClick={handleImportFlow}
+                disabled={!selectedImportFlowId}
+              >
+                Import Flow
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

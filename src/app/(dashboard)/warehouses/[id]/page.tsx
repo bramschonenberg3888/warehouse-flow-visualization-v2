@@ -1,11 +1,12 @@
 "use client"
 
-import { use } from "react"
+import { use, useState } from "react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { Edit, Route, ArrowLeft } from "lucide-react"
+import { Edit, Route, ArrowLeft, Grid3X3, Save, Loader2 } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Card,
   CardContent,
@@ -25,6 +26,33 @@ export default function WarehouseDetailPage({
 }: WarehouseDetailPageProps) {
   const { id } = use(params)
   const { data: warehouse, isLoading } = api.warehouse.getById.useQuery({ id })
+  const [gridColumns, setGridColumns] = useState<number | null>(null)
+  const [gridRows, setGridRows] = useState<number | null>(null)
+  const utils = api.useUtils()
+
+  const updateMutation = api.warehouse.update.useMutation({
+    onSuccess: () => {
+      utils.warehouse.getById.invalidate({ id })
+    },
+  })
+
+  // Initialize local state when warehouse loads
+  const effectiveColumns = gridColumns ?? warehouse?.gridColumns ?? 20
+  const effectiveRows = gridRows ?? warehouse?.gridRows ?? 15
+
+  const handleSaveGrid = () => {
+    if (!warehouse) return
+    updateMutation.mutate({
+      id: warehouse.id,
+      gridColumns: effectiveColumns,
+      gridRows: effectiveRows,
+    })
+  }
+
+  const hasGridChanges =
+    warehouse &&
+    (effectiveColumns !== warehouse.gridColumns ||
+      effectiveRows !== warehouse.gridRows)
 
   if (isLoading) {
     return (
@@ -111,6 +139,73 @@ export default function WarehouseDetailPage({
                   </Link>
                 </Button>
               </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Grid Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Grid3X3 className="h-5 w-5" />
+            Grid Settings
+          </CardTitle>
+          <CardDescription>
+            Configure the warehouse grid dimensions (each cell is 40×40 pixels)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-end gap-4">
+            <div className="flex-1 max-w-[120px]">
+              <label htmlFor="gridColumns" className="text-sm font-medium">
+                Columns
+              </label>
+              <Input
+                id="gridColumns"
+                type="number"
+                min={5}
+                max={100}
+                value={effectiveColumns}
+                onChange={(e) => setGridColumns(parseInt(e.target.value) || 20)}
+              />
+            </div>
+            <span className="pb-2 text-muted-foreground">×</span>
+            <div className="flex-1 max-w-[120px]">
+              <label htmlFor="gridRows" className="text-sm font-medium">
+                Rows
+              </label>
+              <Input
+                id="gridRows"
+                type="number"
+                min={5}
+                max={100}
+                value={effectiveRows}
+                onChange={(e) => setGridRows(parseInt(e.target.value) || 15)}
+              />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-muted-foreground">
+                {effectiveColumns * 40} × {effectiveRows * 40} pixels
+              </p>
+            </div>
+            {hasGridChanges && (
+              <Button
+                onClick={handleSaveGrid}
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save
+                  </>
+                )}
+              </Button>
             )}
           </div>
         </CardContent>

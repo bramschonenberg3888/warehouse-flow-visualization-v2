@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Save } from "lucide-react"
+import { ArrowLeft, Save, Grid3X3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -16,6 +16,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { FlowEditorCanvas } from "@/components/flow-editor/flow-editor-canvas"
 import { SortableSequenceList } from "@/components/flow-editor/sortable-sequence-list"
+import type { ExcalidrawElementType } from "@/components/editor/excalidraw-wrapper"
 import { api } from "@/trpc/react"
 
 const PRESET_COLORS = [
@@ -69,6 +70,11 @@ export default function FlowEditorPage() {
       { warehouseId },
       { enabled: !!warehouseId }
     )
+
+  const { data: warehouse } = api.warehouse.getById.useQuery(
+    { id: warehouseId },
+    { enabled: !!warehouseId }
+  )
 
   const { data: templates } = api.element.getAll.useQuery()
 
@@ -216,6 +222,14 @@ export default function FlowEditorPage() {
               </p>
             )}
           </div>
+          {warehouse && (
+            <div className="flex items-center gap-1 rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+              <Grid3X3 className="h-3 w-3" />
+              <span>
+                {warehouse.gridColumns}×{warehouse.gridRows} grid
+              </span>
+            </div>
+          )}
         </div>
         <Button onClick={handleSave} disabled={!canSave}>
           <Save className="mr-2 h-4 w-4" />
@@ -237,9 +251,16 @@ export default function FlowEditorPage() {
             <FlowEditorCanvas
               placedElements={placedElements ?? []}
               templates={templates ?? []}
+              orphanElements={
+                (warehouse?.canvasState?.["elements"] as
+                  | ExcalidrawElementType[]
+                  | undefined) ?? []
+              }
               sequence={sequence}
               flowColor={color}
               onElementClick={handleElementClick}
+              gridColumns={warehouse?.gridColumns ?? 20}
+              gridRows={warehouse?.gridRows ?? 15}
             />
           )}
         </div>

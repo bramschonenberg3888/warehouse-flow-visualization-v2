@@ -124,8 +124,8 @@ export function ElementLibrarySidebar({
     const centerY =
       appState.scrollY + appState.height / 2 - template.defaultHeight / 2
 
-    // Generate a group ID for this placement
-    const groupId = crypto.randomUUID()
+    // Generate a placement ID for tracking (not an Excalidraw group)
+    const placementId = crypto.randomUUID()
 
     // Get template elements (handling legacy vs v2 format)
     let templateElements
@@ -139,14 +139,14 @@ export function ElementLibrarySidebar({
       templateElements = data!.elements!
     }
 
-    // Generate Excalidraw elements with shared groupId
+    // Generate Excalidraw elements (ungrouped, with deterministic IDs for tracking)
     const newElements = generateExcalidrawElements(
       templateElements,
       centerX,
       centerY,
       1,
       1,
-      groupId
+      placementId
     )
 
     // Get element IDs for tracking
@@ -158,7 +158,7 @@ export function ElementLibrarySidebar({
       elements: [...existingElements, ...newElements],
     })
 
-    onElementAdded?.(groupId, template.id, elementIds)
+    onElementAdded?.(placementId, template.id, elementIds)
   }
 
   return (

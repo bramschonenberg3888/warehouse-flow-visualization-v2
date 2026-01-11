@@ -2,35 +2,60 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo } from "react"
 import type { PlacedElement, ElementTemplate } from "@/server/db/schema"
-import {
-  generateMultiPath,
-  getElementCenter,
-  type Point,
-} from "@/lib/pathfinding"
+import type { ExcalidrawElementType } from "@/components/editor/excalidraw-wrapper"
+import { generateMultiPath, type Point } from "@/lib/pathfinding"
 import { getTemplateVisualProperties } from "@/lib/element-utils"
+import {
+  GRID_CELL_SIZE,
+  worldToGrid,
+  gridToWorld,
+  type GridCell,
+} from "@/lib/grid-config"
+
 const CANVAS_PADDING = 50
-const BADGE_RADIUS = 14
+const BADGE_RADIUS = 12
 const PATH_LINE_WIDTH = 3
+
+// Grid cell ID format: "grid:{col}:{row}"
+function gridCellId(col: number, row: number): string {
+  return `grid:${col}:${row}`
+}
+
+function parseGridCellId(id: string): GridCell | null {
+  if (!id.startsWith("grid:")) return null
+  const parts = id.split(":")
+  if (parts.length !== 3) return null
+  const col = parseInt(parts[1]!, 10)
+  const row = parseInt(parts[2]!, 10)
+  if (isNaN(col) || isNaN(row)) return null
+  return { col, row }
+}
 
 interface FlowEditorCanvasProps {
   placedElements: PlacedElement[]
   templates: ElementTemplate[]
+  orphanElements?: ExcalidrawElementType[]
   sequence: string[]
   flowColor: string
   onElementClick: (elementId: string) => void
+  gridColumns: number
+  gridRows: number
 }
 
 export function FlowEditorCanvas({
   placedElements,
   templates,
+  orphanElements = [],
   sequence,
   flowColor,
   onElementClick,
+  gridColumns,
+  gridRows,
 }: FlowEditorCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
-  const [hoveredElementId, setHoveredElementId] = useState<string | null>(null)
+  const [hoveredCellId, setHoveredCellId] = useState<string | null>(null)
 
   // Build template lookup map
   const templateMap = useMemo(() => {
@@ -41,6 +66,20 @@ export function FlowEditorCanvas({
     return map
   }, [templates])
 
+  // Build set of excalidrawIds that are tracked as placedElements
+  const trackedGroupIds = useMemo(() => {
+    return new Set(placedElements.map((pe) => pe.excalidrawId))
+  }, [placedElements])
+
+  // Filter orphan elements to only include those not tracked as placedElements
+  const filteredOrphanElements = useMemo(() => {
+    return orphanElements.filter((el) => {
+      if (el.isDeleted) return false
+      const groupIds = el.groupIds || []
+      return !groupIds.some((gid: string) => trackedGroupIds.has(gid))
+    })
+  }, [orphanElements, trackedGroupIds])
+
   // Build sequence set for quick lookup
   const sequenceSet = useMemo(() => new Set(sequence), [sequence])
 
@@ -50,6 +89,16 @@ export function FlowEditorCanvas({
     sequence.forEach((id, index) => map.set(id, index))
     return map
   }, [sequence])
+
+  // Use warehouse grid dimensions
+  const gridBounds = useMemo(() => {
+    return {
+      minCol: 0,
+      minRow: 0,
+      maxCol: gridColumns,
+      maxRow: gridRows,
+    }
+  }, [gridColumns, gridRows])
 
   // Resize handler
   useEffect(() => {
@@ -67,40 +116,35 @@ export function FlowEditorCanvas({
     return () => resizeObserver.disconnect()
   }, [])
 
-  // Calculate view transform to fit all elements
+  // Calculate view transform to fit the grid
   const viewTransform = useMemo(() => {
-    let minX = 0,
-      minY = 0,
-      maxX = 800,
-      maxY = 600
+    const gridWidth =
+      (gridBounds.maxCol - gridBounds.minCol + 1) * GRID_CELL_SIZE
+    const gridHeight =
+      (gridBounds.maxRow - gridBounds.minRow + 1) * GRID_CELL_SIZE
 
-    if (placedElements.length > 0) {
-      minX = Infinity
-      minY = Infinity
-      maxX = -Infinity
-      maxY = -Infinity
-      for (const element of placedElements) {
-        minX = Math.min(minX, element.positionX)
-        minY = Math.min(minY, element.positionY)
-        maxX = Math.max(maxX, element.positionX + element.width)
-        maxY = Math.max(maxY, element.positionY + element.height)
-      }
-    }
-
-    const contentWidth = maxX - minX + CANVAS_PADDING * 2
-    const contentHeight = maxY - minY + CANVAS_PADDING * 2
+    const contentWidth = gridWidth + CANVAS_PADDING * 2
+    const contentHeight = gridHeight + CANVAS_PADDING * 2
 
     const scaleX = canvasSize.width / contentWidth
     const scaleY = canvasSize.height / contentHeight
     const scale = Math.min(scaleX, scaleY, 1)
 
+    // Offset to center the grid
+    const worldMinX = gridBounds.minCol * GRID_CELL_SIZE
+    const worldMinY = gridBounds.minRow * GRID_CELL_SIZE
+
     const offsetX =
-      -minX + CANVAS_PADDING + (canvasSize.width / scale - contentWidth) / 2
+      -worldMinX +
+      CANVAS_PADDING +
+      (canvasSize.width / scale - contentWidth) / 2
     const offsetY =
-      -minY + CANVAS_PADDING + (canvasSize.height / scale - contentHeight) / 2
+      -worldMinY +
+      CANVAS_PADDING +
+      (canvasSize.height / scale - contentHeight) / 2
 
     return { offsetX, offsetY, scale }
-  }, [canvasSize, placedElements])
+  }, [canvasSize, gridBounds])
 
   // Transform world coordinates to canvas coordinates
   const worldToCanvas = useCallback(
@@ -120,28 +164,17 @@ export function FlowEditorCanvas({
     [viewTransform]
   )
 
-  // Find element at position
-  const findElementAtPosition = useCallback(
-    (canvasX: number, canvasY: number): PlacedElement | null => {
+  // Find grid cell at canvas position
+  const findGridCellAtPosition = useCallback(
+    (canvasX: number, canvasY: number): string => {
       const world = canvasToWorld(canvasX, canvasY)
-
-      // Check elements in reverse order (top-most first)
-      for (const element of [...placedElements].reverse()) {
-        if (
-          world.x >= element.positionX &&
-          world.x <= element.positionX + element.width &&
-          world.y >= element.positionY &&
-          world.y <= element.positionY + element.height
-        ) {
-          return element
-        }
-      }
-      return null
+      const cell = worldToGrid(world.x, world.y)
+      return gridCellId(cell.col, cell.row)
     },
-    [placedElements, canvasToWorld]
+    [canvasToWorld]
   )
 
-  // Handle canvas click
+  // Handle canvas click - click on grid cell
   const handleCanvasClick = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current
@@ -151,12 +184,10 @@ export function FlowEditorCanvas({
       const canvasX = event.clientX - rect.left
       const canvasY = event.clientY - rect.top
 
-      const element = findElementAtPosition(canvasX, canvasY)
-      if (element) {
-        onElementClick(element.id)
-      }
+      const cellId = findGridCellAtPosition(canvasX, canvasY)
+      onElementClick(cellId)
     },
-    [findElementAtPosition, onElementClick]
+    [findGridCellAtPosition, onElementClick]
   )
 
   // Handle mouse move for hover effect
@@ -169,10 +200,30 @@ export function FlowEditorCanvas({
       const canvasX = event.clientX - rect.left
       const canvasY = event.clientY - rect.top
 
-      const element = findElementAtPosition(canvasX, canvasY)
-      setHoveredElementId(element?.id ?? null)
+      const cellId = findGridCellAtPosition(canvasX, canvasY)
+      setHoveredCellId(cellId)
     },
-    [findElementAtPosition]
+    [findGridCellAtPosition]
+  )
+
+  // Get center point for a sequence item (grid cell or placed element)
+  const getSequenceItemCenter = useCallback(
+    (id: string): Point | null => {
+      const gridCell = parseGridCellId(id)
+      if (gridCell) {
+        return gridToWorld(gridCell)
+      }
+      // Legacy: support placed element IDs
+      const element = placedElements.find((e) => e.id === id)
+      if (element) {
+        return {
+          x: element.positionX + element.width / 2,
+          y: element.positionY + element.height / 2,
+        }
+      }
+      return null
+    },
+    [placedElements]
   )
 
   // Draw canvas
@@ -190,30 +241,48 @@ export function FlowEditorCanvas({
     ctx.fillStyle = "#f8fafc"
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Draw grid pattern
-    ctx.strokeStyle = "#e2e8f0"
-    ctx.lineWidth = 1
-    const gridSize = 40 * viewTransform.scale
-    for (let x = 0; x < canvas.width; x += gridSize) {
-      ctx.beginPath()
-      ctx.moveTo(x, 0)
-      ctx.lineTo(x, canvas.height)
-      ctx.stroke()
-    }
-    for (let y = 0; y < canvas.height; y += gridSize) {
-      ctx.beginPath()
-      ctx.moveTo(0, y)
-      ctx.lineTo(canvas.width, y)
-      ctx.stroke()
+    const scaledCellSize = GRID_CELL_SIZE * viewTransform.scale
+
+    // Draw grid cells
+    for (let col = gridBounds.minCol; col <= gridBounds.maxCol; col++) {
+      for (let row = gridBounds.minRow; row <= gridBounds.maxRow; row++) {
+        const cellId = gridCellId(col, row)
+        const worldPos = {
+          x: col * GRID_CELL_SIZE,
+          y: row * GRID_CELL_SIZE,
+        }
+        const canvasPos = worldToCanvas(worldPos)
+
+        const isHovered = cellId === hoveredCellId
+        const isInSequence = sequenceSet.has(cellId)
+
+        // Draw cell background
+        if (isInSequence) {
+          ctx.fillStyle = flowColor
+          ctx.globalAlpha = 0.2
+          ctx.fillRect(canvasPos.x, canvasPos.y, scaledCellSize, scaledCellSize)
+          ctx.globalAlpha = 1
+        } else if (isHovered) {
+          ctx.fillStyle = flowColor
+          ctx.globalAlpha = 0.1
+          ctx.fillRect(canvasPos.x, canvasPos.y, scaledCellSize, scaledCellSize)
+          ctx.globalAlpha = 1
+        }
+
+        // Draw cell border
+        ctx.strokeStyle = isInSequence || isHovered ? flowColor : "#e2e8f0"
+        ctx.lineWidth = isInSequence || isHovered ? 2 : 1
+        ctx.strokeRect(canvasPos.x, canvasPos.y, scaledCellSize, scaledCellSize)
+      }
     }
 
     // Draw flow path preview
     if (sequence.length >= 2) {
       const points: Point[] = []
-      for (const elementId of sequence) {
-        const element = placedElements.find((e) => e.id === elementId)
-        if (element) {
-          points.push(getElementCenter(element))
+      for (const id of sequence) {
+        const center = getSequenceItemCenter(id)
+        if (center) {
+          points.push(center)
         }
       }
 
@@ -223,12 +292,37 @@ export function FlowEditorCanvas({
       }
     }
 
-    // Draw each placed element
+    // Draw sequence badges on grid cells
+    for (const [id, index] of sequenceIndexMap) {
+      const gridCell = parseGridCellId(id)
+      if (!gridCell) continue
+
+      const center = gridToWorld(gridCell)
+      const canvasCenter = worldToCanvas(center)
+
+      // Badge background
+      ctx.beginPath()
+      ctx.arc(canvasCenter.x, canvasCenter.y, BADGE_RADIUS, 0, Math.PI * 2)
+      ctx.fillStyle = flowColor
+      ctx.fill()
+
+      // Badge border
+      ctx.strokeStyle = "#ffffff"
+      ctx.lineWidth = 2
+      ctx.stroke()
+
+      // Badge number
+      ctx.fillStyle = "#ffffff"
+      ctx.font = `bold ${11}px sans-serif`
+      ctx.textAlign = "center"
+      ctx.textBaseline = "middle"
+      ctx.fillText(String(index + 1), canvasCenter.x, canvasCenter.y)
+    }
+
+    // Draw placed elements on top of the grid
     for (const element of placedElements) {
       const template = templateMap.get(element.elementTemplateId)
       const visualProps = getTemplateVisualProperties(template?.excalidrawData)
-      const isHovered = element.id === hoveredElementId
-      const isInSequence = sequenceSet.has(element.id)
 
       const pos = worldToCanvas({ x: element.positionX, y: element.positionY })
       const width = element.width * viewTransform.scale
@@ -262,14 +356,8 @@ export function FlowEditorCanvas({
 
       // Draw element stroke
       ctx.globalAlpha = 1
-      ctx.strokeStyle = isHovered
-        ? flowColor
-        : isInSequence
-          ? flowColor
-          : visualProps.strokeColor
-      ctx.lineWidth =
-        (isHovered || isInSequence ? 3 : visualProps.strokeWidth) *
-        viewTransform.scale
+      ctx.strokeStyle = visualProps.strokeColor
+      ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
 
       if (visualProps.strokeStyle === "dashed") {
         ctx.setLineDash([8, 4])
@@ -297,31 +385,58 @@ export function FlowEditorCanvas({
         ctx.textBaseline = "middle"
         ctx.fillText(element.label, pos.x + width / 2, pos.y + height / 2)
       }
+    }
 
-      // Draw sequence badge if element is in sequence
-      const sequenceIndex = sequenceIndexMap.get(element.id)
-      if (sequenceIndex !== undefined) {
-        const badgeX = pos.x + width / 2
-        const badgeY = pos.y - BADGE_RADIUS - 4
+    // Draw orphan elements
+    for (const element of filteredOrphanElements) {
+      const pos = worldToCanvas({ x: element.x, y: element.y })
+      const width = element.width * viewTransform.scale
+      const height = element.height * viewTransform.scale
 
-        // Badge background
-        ctx.beginPath()
-        ctx.arc(badgeX, badgeY, BADGE_RADIUS, 0, Math.PI * 2)
-        ctx.fillStyle = flowColor
-        ctx.fill()
+      ctx.save()
 
-        // Badge border
-        ctx.strokeStyle = "#ffffff"
-        ctx.lineWidth = 2
-        ctx.stroke()
-
-        // Badge number
-        ctx.fillStyle = "#ffffff"
-        ctx.font = `bold ${12}px sans-serif`
-        ctx.textAlign = "center"
-        ctx.textBaseline = "middle"
-        ctx.fillText(String(sequenceIndex + 1), badgeX, badgeY)
+      if (element.angle && element.angle !== 0) {
+        const centerX = pos.x + width / 2
+        const centerY = pos.y + height / 2
+        ctx.translate(centerX, centerY)
+        ctx.rotate(element.angle)
+        ctx.translate(-centerX, -centerY)
       }
+
+      ctx.fillStyle = element.backgroundColor || "#6b7280"
+      ctx.globalAlpha = (element.opacity ?? 100) / 100
+
+      const hasRoundness = element.roundness?.type && element.roundness.type > 0
+      const radius = hasRoundness ? Math.min(width, height) * 0.1 : 0
+
+      if (radius > 0) {
+        drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
+        ctx.fill()
+      } else {
+        ctx.fillRect(pos.x, pos.y, width, height)
+      }
+
+      ctx.globalAlpha = 1
+      ctx.strokeStyle = element.strokeColor || "#374151"
+      ctx.lineWidth = (element.strokeWidth || 2) * viewTransform.scale
+
+      if (element.strokeStyle === "dashed") {
+        ctx.setLineDash([8, 4])
+      } else if (element.strokeStyle === "dotted") {
+        ctx.setLineDash([2, 2])
+      } else {
+        ctx.setLineDash([])
+      }
+
+      if (radius > 0) {
+        drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
+        ctx.stroke()
+      } else {
+        ctx.strokeRect(pos.x, pos.y, width, height)
+      }
+
+      ctx.setLineDash([])
+      ctx.restore()
     }
   }, [
     canvasSize,
@@ -329,27 +444,30 @@ export function FlowEditorCanvas({
     templates,
     sequence,
     flowColor,
-    hoveredElementId,
+    hoveredCellId,
     viewTransform,
     worldToCanvas,
     templateMap,
     sequenceSet,
     sequenceIndexMap,
+    filteredOrphanElements,
+    gridBounds,
+    getSequenceItemCenter,
   ])
 
   return (
     <div ref={containerRef} className="relative w-full h-full min-h-[400px]">
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 cursor-pointer"
+        className="absolute inset-0 cursor-crosshair"
         style={{ width: "100%", height: "100%" }}
         onClick={handleCanvasClick}
         onMouseMove={handleMouseMove}
-        onMouseLeave={() => setHoveredElementId(null)}
+        onMouseLeave={() => setHoveredCellId(null)}
       />
-      {placedElements.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <p className="text-muted-foreground">
+      {placedElements.length === 0 && filteredOrphanElements.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <p className="text-muted-foreground bg-background/80 px-4 py-2 rounded">
             No elements in this warehouse. Add elements in the warehouse editor
             first.
           </p>

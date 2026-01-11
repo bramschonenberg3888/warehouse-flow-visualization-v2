@@ -44,7 +44,8 @@ export function migrateLegacyTemplate(
 
 /**
  * Generate Excalidraw elements from template elements for canvas placement
- * All generated elements share the same groupId for group behavior
+ * Each element is independent (no grouping)
+ * @param baseId Optional base ID for deterministic element IDs (for tracking)
  */
 export function generateExcalidrawElements(
   templateElements: ExcalidrawTemplateElement[],
@@ -52,13 +53,13 @@ export function generateExcalidrawElements(
   baseY: number,
   scaleX: number = 1,
   scaleY: number = 1,
-  groupId: string
+  baseId?: string
 ): ExcalidrawElementType[] {
   return templateElements.map((te, index) => {
-    // Use deterministic IDs based on groupId so we can track elements reliably
-    // This ensures we can match elements after Excalidraw modifies groupIds
+    // Use deterministic IDs if baseId provided (for tracking), otherwise random
+    const elementId = baseId ? `${baseId}-${index}` : crypto.randomUUID()
     const element: ExcalidrawElementType = {
-      id: `${groupId}-${index}`,
+      id: elementId,
       type: te.type,
       x: baseX + te.relativeX * scaleX,
       y: baseY + te.relativeY * scaleY,
@@ -73,7 +74,7 @@ export function generateExcalidrawElements(
       roughness: te.roughness,
       opacity: te.opacity,
       roundness: te.roundness,
-      groupIds: [groupId],
+      groupIds: [],
       frameId: null,
       seed: Math.floor(Math.random() * 2147483647),
       version: 1,

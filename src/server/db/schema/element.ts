@@ -10,6 +10,11 @@ import {
 import { relations } from "drizzle-orm"
 import { categories } from "./category"
 
+// Element behavior classification
+// - "static": Fixed elements (racking, zones, walls, floor tiles, aisles)
+// - "mobile": Can move during simulation (pallets, forklifts, AGVs, workers)
+export type ElementBehavior = "static" | "mobile"
+
 // Predefined + custom warehouse element templates
 export const elementTemplates = pgTable("element_templates", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -24,6 +29,13 @@ export const elementTemplates = pgTable("element_templates", {
   icon: text("icon").notNull(),
   defaultWidth: integer("default_width").notNull().default(100),
   defaultHeight: integer("default_height").notNull().default(100),
+  // Element behavior classification:
+  // - "static": Fixed elements (racking, zones, walls, floor tiles, aisles)
+  // - "mobile": Can move during simulation (pallets, forklifts, AGVs, workers)
+  elementBehavior: text("element_behavior")
+    .notNull()
+    .default("static")
+    .$type<ElementBehavior>(),
   // true = system predefined, false = user-created
   isSystem: boolean("is_system").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
