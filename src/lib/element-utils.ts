@@ -137,6 +137,80 @@ export function extractTemplateElements(
 }
 
 /**
+ * Visual properties extracted from a template for rendering
+ */
+export interface TemplateVisualProperties {
+  backgroundColor: string
+  strokeColor: string
+  strokeWidth: number
+  strokeStyle: "solid" | "dashed" | "dotted"
+  fillStyle: "solid" | "hachure" | "cross-hatch"
+  roughness: number
+  opacity: number
+  roundness: { type: number } | null
+}
+
+const DEFAULT_VISUAL_PROPERTIES: TemplateVisualProperties = {
+  backgroundColor: "#6b7280",
+  strokeColor: "#374151",
+  strokeWidth: 2,
+  strokeStyle: "solid",
+  fillStyle: "solid",
+  roughness: 0,
+  opacity: 80,
+  roundness: null,
+}
+
+/**
+ * Extract visual properties from template data (handles both legacy v1 and v2 formats)
+ */
+export function getTemplateVisualProperties(
+  data: ExcalidrawElementData | null | undefined
+): TemplateVisualProperties {
+  if (!data) return DEFAULT_VISUAL_PROPERTIES
+
+  // For v2 multi-element templates, read from the first element
+  const firstElement = data.elements?.[0]
+  if (data.version === 2 && firstElement) {
+    return {
+      backgroundColor:
+        firstElement.backgroundColor ??
+        DEFAULT_VISUAL_PROPERTIES.backgroundColor,
+      strokeColor:
+        firstElement.strokeColor ?? DEFAULT_VISUAL_PROPERTIES.strokeColor,
+      strokeWidth:
+        firstElement.strokeWidth ?? DEFAULT_VISUAL_PROPERTIES.strokeWidth,
+      strokeStyle:
+        (firstElement.strokeStyle as TemplateVisualProperties["strokeStyle"]) ??
+        DEFAULT_VISUAL_PROPERTIES.strokeStyle,
+      fillStyle:
+        (firstElement.fillStyle as TemplateVisualProperties["fillStyle"]) ??
+        DEFAULT_VISUAL_PROPERTIES.fillStyle,
+      roughness: firstElement.roughness ?? DEFAULT_VISUAL_PROPERTIES.roughness,
+      opacity: firstElement.opacity ?? DEFAULT_VISUAL_PROPERTIES.opacity,
+      roundness: firstElement.roundness ?? DEFAULT_VISUAL_PROPERTIES.roundness,
+    }
+  }
+
+  // Legacy v1 format - read from top level
+  return {
+    backgroundColor:
+      data.backgroundColor ?? DEFAULT_VISUAL_PROPERTIES.backgroundColor,
+    strokeColor: data.strokeColor ?? DEFAULT_VISUAL_PROPERTIES.strokeColor,
+    strokeWidth: data.strokeWidth ?? DEFAULT_VISUAL_PROPERTIES.strokeWidth,
+    strokeStyle:
+      (data.strokeStyle as TemplateVisualProperties["strokeStyle"]) ??
+      DEFAULT_VISUAL_PROPERTIES.strokeStyle,
+    fillStyle:
+      (data.fillStyle as TemplateVisualProperties["fillStyle"]) ??
+      DEFAULT_VISUAL_PROPERTIES.fillStyle,
+    roughness: data.roughness ?? DEFAULT_VISUAL_PROPERTIES.roughness,
+    opacity: data.opacity ?? DEFAULT_VISUAL_PROPERTIES.opacity,
+    roundness: data.roundness ?? DEFAULT_VISUAL_PROPERTIES.roundness,
+  }
+}
+
+/**
  * Calculate bounding box of elements
  */
 export function calculateBoundingBox(elements: ExcalidrawElementType[]): {

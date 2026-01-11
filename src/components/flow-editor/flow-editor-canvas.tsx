@@ -7,8 +7,7 @@ import {
   getElementCenter,
   type Point,
 } from "@/lib/pathfinding"
-
-const DEFAULT_COLORS = { bg: "#6b7280", stroke: "#374151" }
+import { getTemplateVisualProperties } from "@/lib/element-utils"
 const CANVAS_PADDING = 50
 const BADGE_RADIUS = 14
 const PATH_LINE_WIDTH = 3
@@ -227,7 +226,7 @@ export function FlowEditorCanvas({
     // Draw each placed element
     for (const element of placedElements) {
       const template = templateMap.get(element.elementTemplateId)
-      const data = template?.excalidrawData
+      const visualProps = getTemplateVisualProperties(template?.excalidrawData)
       const isHovered = element.id === hoveredElementId
       const isInSequence = sequenceSet.has(element.id)
 
@@ -247,10 +246,11 @@ export function FlowEditorCanvas({
       }
 
       // Draw element background
-      ctx.fillStyle = data?.backgroundColor ?? DEFAULT_COLORS.bg
-      ctx.globalAlpha = (data?.opacity ?? 80) / 100
+      ctx.fillStyle = visualProps.backgroundColor
+      ctx.globalAlpha = visualProps.opacity / 100
 
-      const hasRoundness = data?.roundness?.type && data.roundness.type > 0
+      const hasRoundness =
+        visualProps.roundness?.type && visualProps.roundness.type > 0
       const radius = hasRoundness ? Math.min(width, height) * 0.1 : 0
 
       if (radius > 0) {
@@ -266,14 +266,14 @@ export function FlowEditorCanvas({
         ? flowColor
         : isInSequence
           ? flowColor
-          : (data?.strokeColor ?? DEFAULT_COLORS.stroke)
+          : visualProps.strokeColor
       ctx.lineWidth =
-        (isHovered || isInSequence ? 3 : (data?.strokeWidth ?? 2)) *
+        (isHovered || isInSequence ? 3 : visualProps.strokeWidth) *
         viewTransform.scale
 
-      if (data?.strokeStyle === "dashed") {
+      if (visualProps.strokeStyle === "dashed") {
         ctx.setLineDash([8, 4])
-      } else if (data?.strokeStyle === "dotted") {
+      } else if (visualProps.strokeStyle === "dotted") {
         ctx.setLineDash([2, 2])
       } else {
         ctx.setLineDash([])

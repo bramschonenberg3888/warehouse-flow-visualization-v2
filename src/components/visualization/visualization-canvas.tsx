@@ -13,9 +13,7 @@ import {
   getElementCenter,
   type Point,
 } from "@/lib/pathfinding"
-
-// Default colors when template data is missing
-const DEFAULT_COLORS = { bg: "#6b7280", stroke: "#374151" }
+import { getTemplateVisualProperties } from "@/lib/element-utils"
 
 // Rendering configuration
 const PALLET_SIZE = 24
@@ -142,7 +140,7 @@ export function VisualizationCanvas({
     // Draw each placed element
     for (const element of placedElements) {
       const template = templateMap.get(element.elementTemplateId)
-      const data = template?.excalidrawData
+      const visualProps = getTemplateVisualProperties(template?.excalidrawData)
 
       const pos = worldToCanvas({ x: element.positionX, y: element.positionY })
       const width = element.width * viewTransform.scale
@@ -161,12 +159,13 @@ export function VisualizationCanvas({
       }
 
       // Draw element background
-      ctx.fillStyle = data?.backgroundColor ?? DEFAULT_COLORS.bg
-      ctx.globalAlpha = (data?.opacity ?? 80) / 100
+      ctx.fillStyle = visualProps.backgroundColor
+      ctx.globalAlpha = visualProps.opacity / 100
 
       // Draw based on shape type (simplified - just rectangles for now)
       // Roundness type > 0 means the element is rounded, use a proportional radius
-      const hasRoundness = data?.roundness?.type && data.roundness.type > 0
+      const hasRoundness =
+        visualProps.roundness?.type && visualProps.roundness.type > 0
       const radius = hasRoundness ? Math.min(width, height) * 0.1 : 0
       if (radius > 0) {
         drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
@@ -177,12 +176,12 @@ export function VisualizationCanvas({
 
       // Draw element stroke
       ctx.globalAlpha = 1
-      ctx.strokeStyle = data?.strokeColor ?? DEFAULT_COLORS.stroke
-      ctx.lineWidth = (data?.strokeWidth ?? 2) * viewTransform.scale
+      ctx.strokeStyle = visualProps.strokeColor
+      ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
 
-      if (data?.strokeStyle === "dashed") {
+      if (visualProps.strokeStyle === "dashed") {
         ctx.setLineDash([8, 4])
-      } else if (data?.strokeStyle === "dotted") {
+      } else if (visualProps.strokeStyle === "dotted") {
         ctx.setLineDash([2, 2])
       } else {
         ctx.setLineDash([])

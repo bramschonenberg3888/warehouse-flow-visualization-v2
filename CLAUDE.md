@@ -1,6 +1,6 @@
 # Warehouse Flow Visualization
 
-Next.js 16.1.1 web app for designing warehouse layouts with draggable elements and visualizing goods movement flow paths using an Excalidraw-based canvas editor.
+Next.js web app for designing warehouse layouts with draggable elements and visualizing goods movement flow paths using an Excalidraw-based canvas editor.
 
 ## Project Structure
 
@@ -12,18 +12,17 @@ src/
 ├── components/
 │   ├── ui/                     # Shadcn/ui components
 │   ├── editor/                 # Excalidraw wrapper & element sidebar
-│   ├── element/                # Element template forms & display
 │   ├── flow-editor/            # Flow editor canvas & drag-drop sequence
-│   ├── layout/                 # Header & sidebar navigation
+│   ├── scenario-builder/       # Visual scenario editor
 │   ├── visualization/          # Canvas-based flow animation
-│   └── warehouse/, wiki/       # Domain components
+│   └── layout/, warehouse/, wiki/
 ├── hooks/                      # Custom React hooks
 ├── lib/
 │   ├── scenario-engine/        # Scenario simulation engine
 │   └── *.ts                    # Utilities (element-utils, pathfinding, wiki-content)
 ├── server/
-│   ├── api/routers/            # tRPC routers (category, element, flow, placed-element, scenario, warehouse)
-│   └── db/schema/              # Drizzle schemas (one file per table)
+│   ├── api/routers/            # tRPC routers (one per domain)
+│   └── db/schema/              # Drizzle schemas (one per table)
 └── trpc/                       # Client-side tRPC
 tests/                          # Vitest unit + Playwright E2E
 migrations/                     # Drizzle database migrations
@@ -32,7 +31,7 @@ migrations/                     # Drizzle database migrations
 ## Organization Rules
 
 - **tRPC routers**: `/server/api/routers` - one router per domain
-- **Components**: `/components` - one component per file, grouped by domain
+- **Components**: `/components` - one component per file, grouped by feature
 - **Database schemas**: `/server/db/schema` - one file per table
 - **Tests**: `/tests/unit` and `/tests/e2e` - mirror source structure
 
@@ -62,8 +61,6 @@ Next.js 16.1.1, React 19, TypeScript 5.9, tRPC 11, PostgreSQL + Drizzle ORM, Nex
 
 **Instance-Controlled**: position (x, y), size (width, height), rotation, label, metadata
 
-When a template is updated, all placed instances reflect visual changes on next load.
-
 ### Documentation
 
 Wiki content is in `src/lib/wiki-content.ts`. Update when changing user-facing behavior.
@@ -86,3 +83,18 @@ Implementation: Add `elementBehavior: 'static' | 'mobile'` to templates. Mobile 
 ## Architecture Alternatives
 
 Canvas editor alternatives documented in `docs/canvas-alternatives.md`. Key candidates: ReactFlow, React-Konva.
+
+## Next Steps
+
+### Test Scenario Builder UI
+
+The scenario builder was upgraded from raw JSON editing to a visual builder. Test:
+
+1. Create new scenario via UI
+2. Add location steps (Specific/Category/Random targets)
+3. Add decision steps (Probability/Capacity/Time/Counter conditions)
+4. Configure spawning modes (Interval/Batch/Manual)
+5. Drag-and-drop reorder steps
+6. Verify JSON tab syncs with visual builder
+7. Save/load scenarios correctly
+8. Run visualization to confirm execution
