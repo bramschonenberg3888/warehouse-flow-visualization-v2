@@ -5,9 +5,12 @@ import {
   jsonb,
   uuid,
   boolean,
+  real,
+  integer,
 } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { warehouses } from "./warehouse"
+import { paths } from "./path"
 import type { ScenarioDefinition } from "@/lib/scenario-engine/types"
 
 // Scenarios for flow simulation
@@ -18,8 +21,14 @@ export const scenarios = pgTable("scenarios", {
     .references(() => warehouses.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
-  // Full scenario definition as JSONB (flows, nodes, edges, settings)
-  definition: jsonb("definition").$type<ScenarioDefinition>().notNull(),
+
+  // Legacy: Full scenario definition as JSONB (deprecated, use paths relation instead)
+  definition: jsonb("definition").$type<ScenarioDefinition>(),
+
+  // Global settings
+  speedMultiplier: real("speed_multiplier").notNull().default(1.0),
+  duration: integer("duration"), // optional max duration in ms
+
   // Whether this scenario is active for visualization
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -27,11 +36,12 @@ export const scenarios = pgTable("scenarios", {
 })
 
 // Relations
-export const scenariosRelations = relations(scenarios, ({ one }) => ({
+export const scenariosRelations = relations(scenarios, ({ one, many }) => ({
   warehouse: one(warehouses, {
     fields: [scenarios.warehouseId],
     references: [warehouses.id],
   }),
+  paths: many(paths),
 }))
 
 export type Scenario = typeof scenarios.$inferSelect

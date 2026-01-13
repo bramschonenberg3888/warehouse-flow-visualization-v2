@@ -10,8 +10,11 @@ export * from "./warehouse"
 // Placed elements (elements on warehouse canvas)
 export * from "./placed-element"
 
-// Flows (goods movement paths)
+// Flows (goods movement paths - legacy)
 export * from "./flow"
 
 // Scenarios (flow simulation configurations)
 export * from "./scenario"
+
+// Paths (simplified movement routes within scenarios)
+export * from "./path"

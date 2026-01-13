@@ -79,20 +79,29 @@ export function ScenarioBuilder({ scenarioId }: ScenarioBuilderProps) {
       setName(scenario.name)
       setDescription(scenario.description ?? "")
       setWarehouseId(scenario.warehouseId)
-      setSpeedMultiplier(scenario.definition.settings.speedMultiplier)
 
-      // Convert flows to UI format
-      const uiFlows = scenario.definition.flows.map(flowDefinitionToUIFlow)
-      setFlows(uiFlows)
+      // Handle legacy definition or use defaults
+      if (scenario.definition) {
+        setSpeedMultiplier(scenario.definition.settings.speedMultiplier)
 
-      // Select first flow
-      const firstFlow = uiFlows[0]
-      if (firstFlow) {
-        setSelectedFlowId(firstFlow.id)
+        // Convert flows to UI format
+        const uiFlows = scenario.definition.flows.map(flowDefinitionToUIFlow)
+        setFlows(uiFlows)
+
+        // Select first flow
+        const firstFlow = uiFlows[0]
+        if (firstFlow) {
+          setSelectedFlowId(firstFlow.id)
+        }
+
+        // Set JSON
+        setJsonValue(JSON.stringify(scenario.definition, null, 2))
+      } else {
+        // New path-based scenario without definition
+        setSpeedMultiplier(scenario.speedMultiplier)
+        setFlows([])
+        setJsonValue("{}")
       }
-
-      // Set JSON
-      setJsonValue(JSON.stringify(scenario.definition, null, 2))
 
       setInitialized(true)
     }

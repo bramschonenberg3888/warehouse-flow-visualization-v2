@@ -16,6 +16,7 @@ interface GridLayoutCanvasProps {
   templates: ElementTemplate[]
   gridColumns: number
   gridRows: number
+  originalGridRows?: number // For calculating visual offset during preview
   selectedTemplateId: string | null
   selectedElementId: string | null
   onCellClick: (col: number, row: number) => void
@@ -28,12 +29,18 @@ export function GridLayoutCanvas({
   templates,
   gridColumns,
   gridRows,
+  originalGridRows,
   selectedTemplateId,
   selectedElementId,
   onCellClick,
   onElementClick,
   onElementDelete,
 }: GridLayoutCanvasProps) {
+  // Calculate visual Y offset for elements when grid rows change
+  // This makes elements appear to stay in place (anchored to bottom) during preview
+  const rowDiff =
+    originalGridRows !== undefined ? gridRows - originalGridRows : 0
+  const elementYOffset = rowDiff * GRID_CELL_SIZE
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 })
@@ -110,24 +117,26 @@ export function GridLayoutCanvas({
     [viewTransform]
   )
 
-  // Find element at position
+  // Find element at position (accounting for visual offset during grid preview)
   const findElementAtPosition = useCallback(
     (worldX: number, worldY: number): PlacedElement | null => {
       // Check in reverse order (top elements first)
       for (let i = placedElements.length - 1; i >= 0; i--) {
         const el = placedElements[i]!
+        // Apply visual offset for preview
+        const visualY = el.positionY + elementYOffset
         if (
           worldX >= el.positionX &&
           worldX <= el.positionX + el.width &&
-          worldY >= el.positionY &&
-          worldY <= el.positionY + el.height
+          worldY >= visualY &&
+          worldY <= visualY + el.height
         ) {
           return el
         }
       }
       return null
     },
-    [placedElements]
+    [placedElements, elementYOffset]
   )
 
   // Handle canvas click
@@ -281,12 +290,14 @@ export function GridLayoutCanvas({
       ctx.globalAlpha = 1
     }
 
-    // Draw placed elements
+    // Draw placed elements (with visual offset for grid preview)
     for (const element of placedElements) {
       const template = templateMap.get(element.elementTemplateId)
       const visualProps = getTemplateVisualProperties(template?.excalidrawData)
 
-      const pos = worldToCanvas(element.positionX, element.positionY)
+      // Apply visual offset to Y position during grid preview
+      const visualY = element.positionY + elementYOffset
+      const pos = worldToCanvas(element.positionX, visualY)
       const width = element.width * viewTransform.scale
       const height = element.height * viewTransform.scale
 
@@ -385,30 +396,32 @@ export function GridLayoutCanvas({
       }
     }
 
-    // Draw coordinate labels on edges
+    // Draw coordinate labels on edges (1-based, origin at bottom-left)
     ctx.fillStyle = "#64748b"
     ctx.font = "10px sans-serif"
     ctx.textAlign = "center"
     ctx.textBaseline = "middle"
 
-    // Column labels (top)
+    // Column labels (bottom) - 1-based
     for (let col = 0; col < gridColumns; col++) {
-      const worldPos = gridToWorldCorner({ col, row: 0 })
+      const worldPos = gridToWorldCorner({ col, row: gridRows - 1 })
       const canvasPos = worldToCanvas(
         worldPos.x + GRID_CELL_SIZE / 2,
-        worldPos.y - 10
+        worldPos.y + GRID_CELL_SIZE + 10
       )
-      ctx.fillText(String(col), canvasPos.x, canvasPos.y)
+      ctx.fillText(String(col + 1), canvasPos.x, canvasPos.y)
     }
 
-    // Row labels (left)
+    // Row labels (left) - 1-based, bottom-to-top
     for (let row = 0; row < gridRows; row++) {
       const worldPos = gridToWorldCorner({ col: 0, row })
       const canvasPos = worldToCanvas(
         worldPos.x - 10,
         worldPos.y + GRID_CELL_SIZE / 2
       )
-      ctx.fillText(String(row), canvasPos.x, canvasPos.y)
+      // Display row 1 at bottom, row N at top
+      const displayRow = gridRows - row
+      ctx.fillText(String(displayRow), canvasPos.x, canvasPos.y)
     }
   }, [
     canvasSize,
@@ -422,6 +435,7 @@ export function GridLayoutCanvas({
     viewTransform,
     worldToCanvas,
     templateMap,
+    elementYOffset,
   ])
 
   return (

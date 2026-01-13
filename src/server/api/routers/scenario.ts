@@ -2,7 +2,7 @@ import { z } from "zod"
 import { eq } from "drizzle-orm"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
-import { scenarios } from "@/server/db/schema"
+import { scenarios, paths } from "@/server/db/schema"
 
 // =============================================================================
 // Zod Schemas for Scenario Definition Validation
@@ -248,7 +248,11 @@ export const scenarioRouter = createTRPCRouter({
         warehouseId: z.string().uuid(),
         name: z.string().min(1).max(100),
         description: z.string().max(500).optional(),
-        definition: ScenarioDefinitionSchema,
+        // Legacy definition (optional for new path-based scenarios)
+        definition: ScenarioDefinitionSchema.optional(),
+        // New global settings
+        speedMultiplier: z.number().min(0.1).max(10).default(1.0),
+        duration: z.number().min(0).optional(),
         isActive: z.boolean().default(true),
       })
     )
@@ -264,7 +268,11 @@ export const scenarioRouter = createTRPCRouter({
         id: z.string().uuid(),
         name: z.string().min(1).max(100).optional(),
         description: z.string().max(500).optional(),
+        // Legacy definition (optional)
         definition: ScenarioDefinitionSchema.optional(),
+        // New global settings
+        speedMultiplier: z.number().min(0.1).max(10).optional(),
+        duration: z.number().min(0).nullish(),
         isActive: z.boolean().optional(),
       })
     )
@@ -310,7 +318,7 @@ export const scenarioRouter = createTRPCRouter({
       return scenario
     }),
 
-  // Duplicate a scenario
+  // Duplicate a scenario (also copies all paths)
   duplicate: publicProcedure
     .input(
       z.object({
@@ -328,6 +336,7 @@ export const scenarioRouter = createTRPCRouter({
         throw new Error("Scenario not found")
       }
 
+      // Create the new scenario
       const [scenario] = await db
         .insert(scenarios)
         .values({
@@ -335,9 +344,38 @@ export const scenarioRouter = createTRPCRouter({
           name: input.newName,
           description: existing.description,
           definition: existing.definition,
+          speedMultiplier: existing.speedMultiplier,
+          duration: existing.duration,
           isActive: false, // Start as inactive
         })
         .returning()
+
+      if (!scenario) {
+        throw new Error("Failed to create scenario")
+      }
+
+      // Copy all paths from the original scenario
+      const existingPaths = await db
+        .select()
+        .from(paths)
+        .where(eq(paths.scenarioId, input.id))
+
+      if (existingPaths.length > 0) {
+        await db.insert(paths).values(
+          existingPaths.map((p) => ({
+            scenarioId: scenario.id,
+            name: p.name,
+            color: p.color,
+            elementType: p.elementType,
+            stops: p.stops,
+            spawnInterval: p.spawnInterval,
+            dwellTime: p.dwellTime,
+            speed: p.speed,
+            maxActive: p.maxActive,
+            isActive: p.isActive,
+          }))
+        )
+      }
 
       return scenario
     }),

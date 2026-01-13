@@ -24,19 +24,14 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    name: "Warehouses",
-    href: "/warehouses",
-    icon: Warehouse,
-  },
-  {
     name: "Elements",
     href: "/elements",
     icon: Boxes,
   },
   {
-    name: "Flows",
-    href: "/flows",
-    icon: Route,
+    name: "Warehouses",
+    href: "/warehouses",
+    icon: Warehouse,
   },
   {
     name: "Scenarios",
@@ -44,7 +39,7 @@ const navigation = [
     icon: Layers,
   },
   {
-    name: "Visualization",
+    name: "Simulate",
     href: "/visualization",
     icon: Play,
   },

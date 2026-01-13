@@ -18,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { WarehousePreview } from "@/components/warehouse/warehouse-preview"
 import { api } from "@/trpc/react"
 import type { Warehouse } from "@/server/db/schema"
 
@@ -27,6 +28,12 @@ interface WarehouseCardProps {
 
 export function WarehouseCard({ warehouse }: WarehouseCardProps) {
   const utils = api.useUtils()
+
+  const { data: placedElements } = api.placedElement.getByWarehouse.useQuery(
+    { warehouseId: warehouse.id },
+    { enabled: !!warehouse.id }
+  )
+  const { data: templates } = api.element.getAll.useQuery()
 
   const deleteMutation = api.warehouse.delete.useMutation({
     onSuccess: () => {
@@ -89,21 +96,23 @@ export function WarehouseCard({ warehouse }: WarehouseCardProps) {
         </div>
       </CardHeader>
       <CardContent>
-        {/* Thumbnail placeholder */}
+        {/* Layout Preview */}
         <Link
           href={`/warehouses/${warehouse.id}`}
-          className="block aspect-video rounded-md border bg-muted/50 transition-colors hover:bg-muted"
+          className="block aspect-video rounded-md border bg-muted/50 transition-colors hover:bg-muted overflow-hidden"
         >
-          {warehouse.thumbnailUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={warehouse.thumbnailUrl}
-              alt={warehouse.name}
-              className="h-full w-full rounded-md object-cover"
+          {placedElements && placedElements.length > 0 ? (
+            <WarehousePreview
+              placedElements={placedElements}
+              templates={templates ?? []}
+              gridColumns={warehouse.gridColumns}
+              gridRows={warehouse.gridRows}
+              width={300}
+              height={169}
             />
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              No preview
+              No layout yet
             </div>
           )}
         </Link>
