@@ -51,7 +51,9 @@ bun run db:generate && bun run db:push
 
 ## Tech Stack
 
-Next.js 16, React 19, TypeScript 5.9, tRPC 11, PostgreSQL + Drizzle ORM, NextAuth 5, Tailwind CSS 4 + shadcn/ui, @dnd-kit, Vitest + Playwright
+Next.js 16, React 19, TypeScript 5.9, tRPC 11, PostgreSQL (Supabase) + Drizzle ORM, NextAuth 5, Tailwind CSS 4 + shadcn/ui, @dnd-kit, Excalidraw, Vitest + Playwright
+
+**Package Manager**: Bun
 
 ## Core Concepts
 
