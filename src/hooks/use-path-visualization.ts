@@ -42,6 +42,7 @@ export function usePathVisualization(
   // Refs for animation loop
   const engineRef = useRef<PathEngine | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const speedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isRunningRef = useRef(false)
   const lastTimeRef = useRef<number>(0)
   const lastUpdateRef = useRef<number>(0)
@@ -64,12 +65,29 @@ export function usePathVisualization(
     buildEngine()
   }, [buildEngine])
 
-  // Animation loop effect
+  // Cleanup timeouts on unmount
   useEffect(() => {
-    if (!state.isRunning) return
+    return () => {
+      if (speedTimeoutRef.current !== null) {
+        clearTimeout(speedTimeoutRef.current)
+        speedTimeoutRef.current = null
+      }
+    }
+  }, [])
+
+  // Animation loop - runs continuously, checks isRunningRef internally
+  useEffect(() => {
+    let frameId: number | null = null
 
     const tick = (timestamp: number) => {
-      if (!engineRef.current || !isRunningRef.current) return
+      // Always schedule next frame first to keep loop alive
+      frameId = requestAnimationFrame(tick)
+
+      // Skip processing if not running or no engine
+      if (!isRunningRef.current || !engineRef.current) {
+        lastTimeRef.current = 0
+        return
+      }
 
       const deltaTime = lastTimeRef.current
         ? timestamp - lastTimeRef.current
@@ -87,19 +105,16 @@ export function usePathVisualization(
         })
         lastUpdateRef.current = timestamp
       }
-
-      animationFrameRef.current = requestAnimationFrame(tick)
     }
 
-    animationFrameRef.current = requestAnimationFrame(tick)
+    frameId = requestAnimationFrame(tick)
 
     return () => {
-      if (animationFrameRef.current !== null) {
-        cancelAnimationFrame(animationFrameRef.current)
-        animationFrameRef.current = null
+      if (frameId !== null) {
+        cancelAnimationFrame(frameId)
       }
     }
-  }, [state.isRunning])
+  }, []) // No dependencies - loop runs forever, controlled by isRunningRef
 
   // Start animation
   const start = useCallback(() => {
@@ -150,7 +165,7 @@ export function usePathVisualization(
 
       if (wasRunning) {
         // Small delay to ensure state updates before restarting
-        setTimeout(() => {
+        speedTimeoutRef.current = setTimeout(() => {
           if (engineRef.current) {
             isRunningRef.current = true
             lastTimeRef.current = 0

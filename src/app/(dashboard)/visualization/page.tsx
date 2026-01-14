@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState, useMemo } from "react"
 import { useSearchParams } from "next/navigation"
 import { Play, Pause, RotateCcw, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -25,7 +25,7 @@ import { PathVisualizationCanvas } from "@/components/visualization/path-visuali
 import { usePathVisualization } from "@/hooks/use-path-visualization"
 import { api } from "@/trpc/react"
 
-export default function VisualizationPage() {
+function VisualizationContent() {
   const searchParams = useSearchParams()
   const scenarioIdFromUrl = searchParams.get("scenario")
 
@@ -70,20 +70,27 @@ export default function VisualizationPage() {
     (w) => w.id === selectedScenario?.warehouseId
   )
 
-  // Build scenario object for the hook
-  const scenarioForHook = selectedScenario
-    ? {
-        ...selectedScenario,
-        speedMultiplier: selectedScenario.speedMultiplier ?? 1.0,
-        duration: selectedScenario.duration ?? null,
-      }
-    : null
+  // Memoize data to prevent unnecessary engine rebuilds
+  const scenarioForHook = useMemo(
+    () =>
+      selectedScenario
+        ? {
+            ...selectedScenario,
+            speedMultiplier: selectedScenario.speedMultiplier ?? 1.0,
+            duration: selectedScenario.duration ?? null,
+          }
+        : null,
+    [selectedScenario]
+  )
+
+  const stablePaths = useMemo(() => paths ?? [], [paths])
+  const stableElements = useMemo(() => placedElements ?? [], [placedElements])
 
   // Path visualization
   const { state, controls, speed } = usePathVisualization(
     scenarioForHook,
-    paths ?? [],
-    placedElements ?? []
+    stablePaths,
+    stableElements
   )
 
   // Group scenarios by warehouse for display
@@ -322,5 +329,19 @@ export default function VisualizationPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+export default function VisualizationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-96">
+          <Skeleton className="h-12 w-48" />
+        </div>
+      }
+    >
+      <VisualizationContent />
+    </Suspense>
   )
 }

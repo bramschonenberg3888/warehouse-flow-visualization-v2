@@ -2,7 +2,7 @@ import { z } from "zod"
 import { eq } from "drizzle-orm"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
-import { paths, type PathElementType } from "@/server/db/schema"
+import { paths } from "@/server/db/schema"
 
 // Stop items can be either UUIDs (placed elements) or grid cell IDs (grid:{col}:{row})
 const stopItemSchema = z.string().refine(
@@ -22,13 +22,6 @@ const stopItemSchema = z.string().refine(
   },
   { message: "Must be a valid UUID or grid cell ID (grid:{col}:{row})" }
 )
-
-const elementTypeSchema = z.enum([
-  "pallet",
-  "forklift",
-  "cart",
-  "person",
-]) as z.ZodType<PathElementType>
 
 export const pathRouter = createTRPCRouter({
   // Get all paths for a scenario
@@ -60,10 +53,8 @@ export const pathRouter = createTRPCRouter({
           .string()
           .regex(/^#[0-9A-Fa-f]{6}$/)
           .default("#3b82f6"),
-        elementType: elementTypeSchema.default("pallet"),
-        stops: z
-          .array(stopItemSchema)
-          .min(2, "Path must have at least 2 stops"),
+        elementTemplateId: z.string().uuid().nullable().optional(),
+        stops: z.array(stopItemSchema).default([]),
         spawnInterval: z.number().int().min(500).max(60000).default(5000),
         dwellTime: z.number().int().min(0).max(30000).default(2000),
         speed: z.number().min(0.1).max(5).default(1.0),
@@ -86,11 +77,8 @@ export const pathRouter = createTRPCRouter({
           .string()
           .regex(/^#[0-9A-Fa-f]{6}$/)
           .optional(),
-        elementType: elementTypeSchema.optional(),
-        stops: z
-          .array(stopItemSchema)
-          .min(2, "Path must have at least 2 stops")
-          .optional(),
+        elementTemplateId: z.string().uuid().nullable().optional(),
+        stops: z.array(stopItemSchema).optional(),
         spawnInterval: z.number().int().min(500).max(60000).optional(),
         dwellTime: z.number().int().min(0).max(30000).optional(),
         speed: z.number().min(0.1).max(5).optional(),
@@ -164,7 +152,7 @@ export const pathRouter = createTRPCRouter({
           scenarioId: existing.scenarioId,
           name: input.newName ?? `${existing.name} (Copy)`,
           color: existing.color,
-          elementType: existing.elementType,
+          elementTemplateId: existing.elementTemplateId,
           stops: existing.stops,
           spawnInterval: existing.spawnInterval,
           dwellTime: existing.dwellTime,

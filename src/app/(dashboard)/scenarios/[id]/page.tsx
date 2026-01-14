@@ -39,13 +39,18 @@ export default function ScenarioEditorPage({ params }: PageProps) {
   const { data: templates, isLoading: templatesLoading } =
     api.element.getAll.useQuery()
 
+  // Fetch mobile element templates (for path moving element selection)
+  const { data: mobileElements, isLoading: mobileLoading } =
+    api.element.getMobileElements.useQuery()
+
   // Loading state
   const isLoading =
     scenarioLoading ||
     warehouseLoading ||
     pathsLoading ||
     elementsLoading ||
-    templatesLoading
+    templatesLoading ||
+    mobileLoading
 
   if (isLoading) {
     return (
@@ -79,6 +84,7 @@ export default function ScenarioEditorPage({ params }: PageProps) {
       initialPaths={paths ?? []}
       placedElements={placedElements ?? []}
       templates={templates ?? []}
+      mobileElements={mobileElements ?? []}
     />
   )
 }

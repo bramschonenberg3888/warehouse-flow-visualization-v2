@@ -47,6 +47,28 @@ export const elementRouter = createTRPCRouter({
         .orderBy(elementTemplates.name)
     }),
 
+  // Get only mobile element templates (for path selection)
+  getMobileElements: publicProcedure.query(async () => {
+    return db
+      .select({
+        id: elementTemplates.id,
+        name: elementTemplates.name,
+        categoryId: elementTemplates.categoryId,
+        excalidrawData: elementTemplates.excalidrawData,
+        icon: elementTemplates.icon,
+        defaultWidth: elementTemplates.defaultWidth,
+        defaultHeight: elementTemplates.defaultHeight,
+        elementBehavior: elementTemplates.elementBehavior,
+        isSystem: elementTemplates.isSystem,
+        createdAt: elementTemplates.createdAt,
+        category: categories,
+      })
+      .from(elementTemplates)
+      .leftJoin(categories, eq(elementTemplates.categoryId, categories.id))
+      .where(eq(elementTemplates.elementBehavior, "mobile"))
+      .orderBy(elementTemplates.name)
+  }),
+
   // Get a single element template by ID
   getById: publicProcedure
     .input(z.object({ id: z.string().uuid() }))

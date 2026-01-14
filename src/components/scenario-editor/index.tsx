@@ -33,6 +33,7 @@ interface ScenarioEditorProps {
   initialPaths: Path[]
   placedElements: PlacedElement[]
   templates: ElementTemplate[]
+  mobileElements: ElementTemplate[]
 }
 
 export function ScenarioEditor({
@@ -41,6 +42,7 @@ export function ScenarioEditor({
   initialPaths,
   placedElements,
   templates,
+  mobileElements,
 }: ScenarioEditorProps) {
   const router = useRouter()
   const utils = api.useUtils()
@@ -90,7 +92,7 @@ export function ScenarioEditor({
             scenarioId: scenario.id,
             name: path.name,
             color: path.color,
-            elementType: path.elementType,
+            elementTemplateId: path.elementTemplateId,
             stops: path.stops,
             spawnInterval: path.spawnInterval,
             dwellTime: path.dwellTime,
@@ -104,7 +106,7 @@ export function ScenarioEditor({
             id: path.id,
             name: path.name,
             color: path.color,
-            elementType: path.elementType,
+            elementTemplateId: path.elementTemplateId,
             stops: path.stops,
             spawnInterval: path.spawnInterval,
             dwellTime: path.dwellTime,
@@ -141,7 +143,7 @@ export function ScenarioEditor({
       scenarioId: scenario.id,
       name: `Path ${paths.length + 1}`,
       color: getNextColor(paths.length),
-      elementType: "pallet",
+      elementTemplateId: mobileElements[0]?.id ?? null,
       stops: [],
       spawnInterval: 5000,
       dwellTime: 2000,
@@ -153,7 +155,7 @@ export function ScenarioEditor({
     }
     setPaths([...paths, newPath])
     setSelectedPathId(newPath.id)
-  }, [scenario.id, paths])
+  }, [scenario.id, paths, mobileElements])
 
   // Handle delete path
   const handleDeletePath = useCallback(
@@ -328,6 +330,7 @@ export function ScenarioEditor({
             <PathSettings
               path={selectedPath}
               placedElements={placedElements}
+              mobileElements={mobileElements}
               onUpdate={(updates) => handlePathUpdate(selectedPath.id, updates)}
             />
           </div>

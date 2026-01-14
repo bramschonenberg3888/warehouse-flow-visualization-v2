@@ -289,35 +289,92 @@ export function PathVisualizationCanvas({
     // Draw pallets
     for (const pallet of pallets) {
       const canvasPos = worldToCanvas({ x: pallet.x, y: pallet.y })
-      const size = PALLET_SIZE * viewTransform.scale
 
-      // Draw pallet
-      ctx.fillStyle = pallet.color
+      // Get template if available
+      const template = pallet.elementTemplateId
+        ? templateMap.get(pallet.elementTemplateId)
+        : null
+      const visualProps = getTemplateVisualProperties(template?.excalidrawData)
+
+      // Use template size or default
+      const width =
+        (template?.defaultWidth ?? PALLET_SIZE) * viewTransform.scale
+      const height =
+        (template?.defaultHeight ?? PALLET_SIZE) * viewTransform.scale
+
+      ctx.save()
       ctx.globalAlpha = pallet.state === "dwelling" ? 0.7 : 1
 
-      ctx.beginPath()
-      ctx.arc(canvasPos.x, canvasPos.y, size / 2, 0, Math.PI * 2)
-      ctx.fill()
+      if (template) {
+        // Draw as rectangle using template visual properties
+        const x = canvasPos.x - width / 2
+        const y = canvasPos.y - height / 2
 
-      // Draw border
-      ctx.strokeStyle = "#ffffff"
-      ctx.lineWidth = 2
-      ctx.stroke()
+        // Draw fill
+        ctx.fillStyle = visualProps.backgroundColor
+        ctx.globalAlpha *= visualProps.opacity / 100
+
+        const hasRoundness =
+          visualProps.roundness?.type && visualProps.roundness.type > 0
+        const radius = hasRoundness ? Math.min(width, height) * 0.1 : 0
+
+        if (radius > 0) {
+          drawRoundedRect(ctx, x, y, width, height, radius)
+          ctx.fill()
+        } else {
+          ctx.fillRect(x, y, width, height)
+        }
+
+        // Draw stroke
+        ctx.globalAlpha = pallet.state === "dwelling" ? 0.7 : 1
+        ctx.strokeStyle = visualProps.strokeColor
+        ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
+
+        if (visualProps.strokeStyle === "dashed") {
+          ctx.setLineDash([8, 4])
+        } else if (visualProps.strokeStyle === "dotted") {
+          ctx.setLineDash([2, 2])
+        } else {
+          ctx.setLineDash([])
+        }
+
+        if (radius > 0) {
+          drawRoundedRect(ctx, x, y, width, height, radius)
+          ctx.stroke()
+        } else {
+          ctx.strokeRect(x, y, width, height)
+        }
+        ctx.setLineDash([])
+      } else {
+        // Fallback: Draw as colored circle
+        const size = PALLET_SIZE * viewTransform.scale
+
+        ctx.fillStyle = pallet.color
+        ctx.beginPath()
+        ctx.arc(canvasPos.x, canvasPos.y, size / 2, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Draw border
+        ctx.strokeStyle = "#ffffff"
+        ctx.lineWidth = 2
+        ctx.stroke()
+      }
 
       // Draw state indicator for dwelling
       if (pallet.state === "dwelling") {
-        ctx.strokeStyle = pallet.color
+        const indicatorSize = Math.max(width, height) / 2 + 3
+        ctx.strokeStyle = template ? visualProps.strokeColor : pallet.color
         ctx.lineWidth = 2
         ctx.beginPath()
-        ctx.arc(canvasPos.x, canvasPos.y, size / 2 + 3, 0, Math.PI * 2)
+        ctx.arc(canvasPos.x, canvasPos.y, indicatorSize, 0, Math.PI * 2)
         ctx.setLineDash([4, 4])
         ctx.stroke()
         ctx.setLineDash([])
       }
 
-      ctx.globalAlpha = 1
+      ctx.restore()
     }
-  }, [canvasSize, pallets, viewTransform, worldToCanvas])
+  }, [canvasSize, pallets, viewTransform, worldToCanvas, templateMap])
 
   return (
     <div ref={containerRef} className="relative w-full h-full min-h-[400px]">

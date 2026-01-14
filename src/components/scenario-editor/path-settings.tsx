@@ -32,18 +32,20 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import type { Path, PlacedElement, PathElementType } from "@/server/db/schema"
+import type { Path, PlacedElement, ElementTemplate } from "@/server/db/schema"
 import { cn } from "@/lib/utils"
 
 interface PathSettingsProps {
   path: Path
   placedElements: PlacedElement[]
+  mobileElements: ElementTemplate[]
   onUpdate: (updates: Partial<Path>) => void
 }
 
 export function PathSettings({
   path,
   placedElements,
+  mobileElements,
   onUpdate,
 }: PathSettingsProps) {
   const sensors = useSensors(
@@ -108,25 +110,39 @@ export function PathSettings({
             />
           </div>
 
-          {/* Element Type */}
+          {/* Mobile Element */}
           <div className="space-y-2">
-            <Label>Element Type</Label>
+            <Label>Moving Element</Label>
             <Select
-              value={path.elementType}
-              onValueChange={(value: PathElementType) =>
-                onUpdate({ elementType: value })
+              value={path.elementTemplateId ?? "none"}
+              onValueChange={(value) =>
+                onUpdate({
+                  elementTemplateId: value === "none" ? null : value,
+                })
               }
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="Select element type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pallet">Pallet</SelectItem>
-                <SelectItem value="forklift">Forklift</SelectItem>
-                <SelectItem value="cart">Cart</SelectItem>
-                <SelectItem value="person">Person</SelectItem>
+                <SelectItem value="none">
+                  <span className="text-muted-foreground">
+                    Default (circle)
+                  </span>
+                </SelectItem>
+                {mobileElements.map((element) => (
+                  <SelectItem key={element.id} value={element.id}>
+                    {element.name}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
+            {mobileElements.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No mobile elements defined. Create one in the Elements page with
+                behavior set to &quot;mobile&quot;.
+              </p>
+            )}
           </div>
 
           {/* Spawn Interval */}

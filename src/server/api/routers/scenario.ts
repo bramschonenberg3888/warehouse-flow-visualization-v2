@@ -366,7 +366,7 @@ export const scenarioRouter = createTRPCRouter({
             scenarioId: scenario.id,
             name: p.name,
             color: p.color,
-            elementType: p.elementType,
+            elementTemplateId: p.elementTemplateId,
             stops: p.stops,
             spawnInterval: p.spawnInterval,
             dwellTime: p.dwellTime,

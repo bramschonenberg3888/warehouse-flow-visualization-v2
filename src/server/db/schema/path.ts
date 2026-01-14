@@ -10,9 +10,7 @@ import {
 } from "drizzle-orm/pg-core"
 import { relations } from "drizzle-orm"
 import { scenarios } from "./scenario"
-
-// Element types that can move along paths
-export type PathElementType = "pallet" | "forklift" | "cart" | "person"
+import { elementTemplates } from "./element"
 
 // Paths define movement routes within a scenario
 export const paths = pgTable("paths", {
@@ -23,11 +21,11 @@ export const paths = pgTable("paths", {
   name: text("name").notNull(),
   color: text("color").notNull().default("#3b82f6"),
 
-  // What type of element moves along this path
-  elementType: text("element_type")
-    .$type<PathElementType>()
-    .notNull()
-    .default("pallet"),
+  // Reference to a mobile element template that moves along this path
+  elementTemplateId: uuid("element_template_id").references(
+    () => elementTemplates.id,
+    { onDelete: "set null" }
+  ),
 
   // Ordered sequence of stops (element IDs or grid coords "grid:col:row")
   stops: jsonb("stops").$type<string[]>().notNull().default([]),
@@ -48,6 +46,10 @@ export const pathsRelations = relations(paths, ({ one }) => ({
   scenario: one(scenarios, {
     fields: [paths.scenarioId],
     references: [scenarios.id],
+  }),
+  elementTemplate: one(elementTemplates, {
+    fields: [paths.elementTemplateId],
+    references: [elementTemplates.id],
   }),
 }))
 

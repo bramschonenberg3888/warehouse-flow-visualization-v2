@@ -12,7 +12,7 @@ export interface Pallet {
   id: string
   pathId: string
   color: string
-  elementType: string
+  elementTemplateId: string | null
   x: number
   y: number
   state: "moving" | "dwelling"
@@ -183,7 +183,7 @@ export class PathEngine {
       id: palletId,
       pathId,
       color: path.color,
-      elementType: path.elementType,
+      elementTemplateId: path.elementTemplateId,
       x: startPos.x,
       y: startPos.y,
       state: "dwelling",
