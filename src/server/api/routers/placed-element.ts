@@ -110,47 +110,52 @@ export const placedElementRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const { warehouseId, elements } = input
 
-      // Get existing elements
-      const existing = await db
-        .select()
-        .from(placedElements)
-        .where(eq(placedElements.warehouseId, warehouseId))
+      // Wrap in transaction to prevent race conditions
+      return await db.transaction(async (tx) => {
+        // Get existing elements
+        const existing = await tx
+          .select()
+          .from(placedElements)
+          .where(eq(placedElements.warehouseId, warehouseId))
 
-      const existingIds = new Set(existing.map((e) => e.id))
-      const inputIds = new Set(elements.filter((e) => e.id).map((e) => e.id!))
+        const existingIds = new Set(existing.map((e) => e.id))
+        const inputIds = new Set(elements.filter((e) => e.id).map((e) => e.id!))
 
-      // Delete elements that are no longer present
-      const toDelete = existing.filter((e) => !inputIds.has(e.id))
-      for (const element of toDelete) {
-        await db.delete(placedElements).where(eq(placedElements.id, element.id))
-      }
-
-      // Upsert elements
-      const results = []
-      for (const element of elements) {
-        if (element.id && existingIds.has(element.id)) {
-          // Update existing element
-          const { id, ...data } = element
-          const [updated] = await db
-            .update(placedElements)
-            .set(data)
-            .where(eq(placedElements.id, id))
-            .returning()
-          results.push(updated)
-        } else {
-          // Create new element
-          const { id: _id, ...data } = element
-          const [created] = await db
-            .insert(placedElements)
-            .values({
-              ...data,
-              warehouseId,
-            })
-            .returning()
-          results.push(created)
+        // Delete elements that are no longer present
+        const toDelete = existing.filter((e) => !inputIds.has(e.id))
+        for (const element of toDelete) {
+          await tx
+            .delete(placedElements)
+            .where(eq(placedElements.id, element.id))
         }
-      }
 
-      return results
+        // Upsert elements
+        const results = []
+        for (const element of elements) {
+          if (element.id && existingIds.has(element.id)) {
+            // Update existing element
+            const { id, ...data } = element
+            const [updated] = await tx
+              .update(placedElements)
+              .set(data)
+              .where(eq(placedElements.id, id))
+              .returning()
+            results.push(updated)
+          } else {
+            // Create new element
+            const { id: _id, ...data } = element
+            const [created] = await tx
+              .insert(placedElements)
+              .values({
+                ...data,
+                warehouseId,
+              })
+              .returning()
+            results.push(created)
+          }
+        }
+
+        return results
+      })
     }),
 })

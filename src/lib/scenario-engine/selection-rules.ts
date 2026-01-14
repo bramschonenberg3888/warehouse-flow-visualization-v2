@@ -129,11 +129,14 @@ function selectNearest(
   position: Point,
   elements: PlacedElementInfo[]
 ): string | null {
+  // Build Map for O(1) lookups instead of O(n) find() calls
+  const elementMap = new Map(elements.map((e) => [e.id, e]))
+
   let nearest: string | null = null
   let minDistance = Infinity
 
   for (const id of pool) {
-    const element = elements.find((e) => e.id === id)
+    const element = elementMap.get(id)
     if (!element) continue
 
     const center = getElementCenter(element)
@@ -156,11 +159,14 @@ function selectFurthest(
   position: Point,
   elements: PlacedElementInfo[]
 ): string | null {
+  // Build Map for O(1) lookups instead of O(n) find() calls
+  const elementMap = new Map(elements.map((e) => [e.id, e]))
+
   let furthest: string | null = null
   let maxDistance = -1
 
   for (const id of pool) {
-    const element = elements.find((e) => e.id === id)
+    const element = elementMap.get(id)
     if (!element) continue
 
     const center = getElementCenter(element)

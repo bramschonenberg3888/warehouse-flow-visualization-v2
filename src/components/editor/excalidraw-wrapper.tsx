@@ -64,7 +64,8 @@ export function ExcalidrawWrapper({
       const link = document.createElement("link")
       link.id = linkId
       link.rel = "stylesheet"
-      link.href = "https://unpkg.com/@excalidraw/excalidraw/dist/prod/index.css"
+      link.href =
+        "https://unpkg.com/@excalidraw/excalidraw@0.18.0/dist/prod/index.css"
       document.head.appendChild(link)
     }
   }, [])

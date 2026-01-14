@@ -77,11 +77,6 @@ export class ScenarioEngine {
     this.scenario = scenario
     this.config = config
 
-    console.log(
-      "[Engine] Creating new ScenarioEngine",
-      scenario.flows.map((f) => f.id)
-    )
-
     // Initialize random number generator
     this.random = createSeededRandom(scenario.settings.seed)
 
@@ -130,21 +125,6 @@ export class ScenarioEngine {
     const speedMultiplier = this.scenario.settings.speedMultiplier || 1
     const adjustedDelta = deltaTime * speedMultiplier
     this.clock += adjustedDelta
-
-    // Debug log every second
-    if (
-      Math.floor(this.clock / 1000) !==
-      Math.floor((this.clock - adjustedDelta) / 1000)
-    ) {
-      console.log(
-        `[Engine] Clock: ${this.clock.toFixed(0)}ms, Pallets: ${this.pallets.size}`
-      )
-      for (const pallet of this.pallets.values()) {
-        console.log(
-          `  - Pallet ${pallet.id.slice(0, 8)}: state=${pallet.state}, node=${pallet.currentNodeId}, dwell=${pallet.dwellRemaining?.toFixed(0)}`
-        )
-      }
-    }
 
     // Check for spawns
     this.checkSpawns()
@@ -594,12 +574,16 @@ export class ScenarioEngine {
       case "fixed":
         return dwell.duration
 
-      case "range":
-        return dwell.min + this.random() * (dwell.max - dwell.min)
+      case "range": {
+        const min = Math.min(dwell.min, dwell.max)
+        const max = Math.max(dwell.min, dwell.max)
+        return min + this.random() * (max - min)
+      }
 
       case "distribution": {
         // Box-Muller transform for normal distribution
-        const u1 = this.random()
+        // Clamp u1 to avoid log(0) which produces -Infinity
+        const u1 = Math.max(Number.EPSILON, this.random())
         const u2 = this.random()
         const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2)
         return Math.max(0, dwell.mean + z * dwell.stdDev)
