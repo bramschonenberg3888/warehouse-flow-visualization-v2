@@ -10,9 +10,14 @@ import {
   Layers,
   Warehouse,
   Play,
+  Route,
+  GitBranch,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import {
+  ScenarioCardSkeleton,
+  CardGridSkeleton,
+} from "@/components/ui/skeletons"
 import { Badge } from "@/components/ui/badge"
 import {
   Card,
@@ -92,29 +97,38 @@ export default function ScenariosPage() {
       </div>
 
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-48" />
-          ))}
-        </div>
+        <CardGridSkeleton count={3} CardSkeleton={ScenarioCardSkeleton} />
       ) : totalScenarios === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Layers className="h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold">No scenarios yet</h3>
-            <p className="mt-2 text-sm text-muted-foreground text-center max-w-sm">
-              Create your first scenario to visualize goods movement through
-              your warehouse with multiple flows, branching logic, and
-              multi-pallet spawning.
-            </p>
-            <Button className="mt-4" asChild>
-              <Link href="/scenarios/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Scenario
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30 py-16">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+            <Layers className="h-10 w-10 text-muted-foreground" />
+          </div>
+          <h3 className="mt-6 text-lg font-semibold">No scenarios yet</h3>
+          <p className="mt-2 max-w-sm text-center text-sm text-muted-foreground">
+            Create your first scenario to define movement paths and visualize
+            goods flow through your warehouse.
+          </p>
+          <Button className="mt-6" asChild>
+            <Link href="/scenarios/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Create Scenario
+            </Link>
+          </Button>
+          <div className="mt-8 flex items-center gap-8 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Route className="h-4 w-4" />
+              <span>Define paths</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <GitBranch className="h-4 w-4" />
+              <span>Multiple flows</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Play className="h-4 w-4" />
+              <span>Animate movement</span>
+            </div>
+          </div>
+        </div>
       ) : (
         <div className="space-y-6">
           {Array.from(scenariosByWarehouse.values())

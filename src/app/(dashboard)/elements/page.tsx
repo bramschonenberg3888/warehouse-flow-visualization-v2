@@ -32,7 +32,10 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
+import {
+  ElementCardSkeleton,
+  CardGridSkeleton,
+} from "@/components/ui/skeletons"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
@@ -125,13 +128,13 @@ export default function ElementsPage() {
   const isLoading = elementsLoading || categoriesLoading
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">Elements</h1>
-          <p className="text-muted-foreground">
-            Create and organize reusable element templates like racking,
-            workstations, and mobile equipment to build your warehouse layouts
+          <p className="text-sm text-muted-foreground">
+            Create and organize reusable element templates for your warehouse
+            layouts
           </p>
         </div>
         <div className="flex gap-2">
@@ -146,11 +149,7 @@ export default function ElementsPage() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-4">
-          {[...Array(3)].map((_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
-          ))}
-        </div>
+        <CardGridSkeleton count={6} CardSkeleton={ElementCardSkeleton} />
       ) : (
         <Tabs defaultValue="all" className="space-y-4">
           <TabsList>
@@ -221,10 +220,16 @@ export default function ElementsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
-                  <p className="text-sm text-muted-foreground">
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30 py-12">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                    <Package className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="mt-4 text-sm text-muted-foreground">
                     No elements in this category
                   </p>
+                  <Button variant="link" size="sm" className="mt-2" asChild>
+                    <Link href="/elements/new">Add element</Link>
+                  </Button>
                 </div>
               )}
             </TabsContent>
@@ -276,26 +281,29 @@ function ElementCard({ element, onDelete, isDeleting }: ElementCardProps) {
   const bgColor = element.category?.bgColor || "#6b7280"
 
   return (
-    <Card>
+    <Card className="transition-shadow hover:shadow-md">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div
-              className="flex h-10 w-10 items-center justify-center rounded"
+              className="flex h-10 w-10 items-center justify-center rounded-lg shadow-sm"
               style={{ backgroundColor: bgColor }}
             >
               <Icon className="h-5 w-5 text-white" />
             </div>
             <div>
-              <CardTitle className="text-base">{element.name}</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-base font-semibold">
+                {element.name}
+              </CardTitle>
+              <CardDescription className="text-xs">
                 {element.defaultWidth} x {element.defaultHeight}
               </CardDescription>
             </div>
           </div>
           {element.category && (
             <Badge
-              variant="outline"
+              variant="secondary"
+              className="text-xs font-medium"
               style={{ color: element.category.bgColor }}
             >
               {element.category.name}
@@ -304,26 +312,21 @@ function ElementCard({ element, onDelete, isDeleting }: ElementCardProps) {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between">
-          <div className="text-xs text-muted-foreground">
-            {element.category?.name || "Uncategorized"}
-          </div>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-              <Link href={`/elements/${element.id}/edit`}>
-                <Pencil className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-destructive hover:text-destructive"
-              onClick={onDelete}
-              disabled={isDeleting}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+            <Link href={`/elements/${element.id}/edit`}>
+              <Pencil className="h-4 w-4" />
+            </Link>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:text-destructive"
+            onClick={onDelete}
+            disabled={isDeleting}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>
@@ -332,13 +335,15 @@ function ElementCard({ element, onDelete, isDeleting }: ElementCardProps) {
 
 function EmptyState({ hasCategories }: { hasCategories: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-      <Package className="h-12 w-12 text-muted-foreground" />
-      <h3 className="mt-4 text-lg font-semibold">No elements yet</h3>
-      <p className="mt-2 text-sm text-muted-foreground">
+    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30 py-16">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted">
+        <Package className="h-10 w-10 text-muted-foreground" />
+      </div>
+      <h3 className="mt-6 text-lg font-semibold">No elements yet</h3>
+      <p className="mt-2 max-w-sm text-center text-sm text-muted-foreground">
         {hasCategories
-          ? "Create custom elements for your warehouse layouts"
-          : "Create a category first, then add elements"}
+          ? "Create custom element templates like racking, workstations, and equipment to use in your warehouse layouts."
+          : "Start by creating a category to organize your elements, then add element templates."}
       </p>
       <div className="mt-6">
         <Button asChild>
@@ -347,6 +352,16 @@ function EmptyState({ hasCategories }: { hasCategories: boolean }) {
             New Element
           </Link>
         </Button>
+      </div>
+      <div className="mt-8 flex items-center gap-8 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Layers className="h-4 w-4" />
+          <span>Reusable templates</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Square className="h-4 w-4" />
+          <span>Custom sizing</span>
+        </div>
       </div>
     </div>
   )
