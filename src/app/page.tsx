@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Plus, Warehouse, Route, Boxes } from "lucide-react"
+import { Warehouse, Boxes, Layers, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -31,27 +31,7 @@ export default function Home() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Warehouse className="h-5 w-5 text-primary" />
-                    Warehouses
-                  </CardTitle>
-                  <CardDescription>
-                    Create and manage warehouse layouts
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button asChild className="w-full">
-                    <Link href="/warehouses">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Warehouse
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
@@ -59,12 +39,12 @@ export default function Home() {
                     Elements
                   </CardTitle>
                   <CardDescription>
-                    Browse warehouse element library
+                    Create reusable element templates for your layouts
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button asChild variant="outline" className="w-full">
-                    <Link href="/elements">View Elements</Link>
+                    <Link href="/elements">Manage Elements</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -72,14 +52,50 @@ export default function Home() {
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-base">
-                    <Route className="h-5 w-5 text-primary" />
-                    Flows
+                    <Warehouse className="h-5 w-5 text-primary" />
+                    Warehouses
                   </CardTitle>
-                  <CardDescription>Define goods movement paths</CardDescription>
+                  <CardDescription>
+                    Design warehouse floor plans on a grid canvas
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button asChild variant="outline" className="w-full" disabled>
-                    <span>Select Warehouse First</span>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="/warehouses">Manage Warehouses</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Layers className="h-5 w-5 text-primary" />
+                    Scenarios
+                  </CardTitle>
+                  <CardDescription>
+                    Define movement paths and spawning rules
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link href="/scenarios">Manage Scenarios</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Play className="h-5 w-5 text-primary" />
+                    Visualize
+                  </CardTitle>
+                  <CardDescription>
+                    Watch animated goods movement in your warehouse
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button asChild className="w-full">
+                    <Link href="/visualization">Start Visualization</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -98,30 +114,31 @@ export default function Home() {
                 <ol className="list-inside list-decimal space-y-3 text-sm text-muted-foreground">
                   <li>
                     <span className="font-medium text-foreground">
-                      Create a warehouse
+                      Create elements
                     </span>{" "}
-                    - Start by creating a new warehouse to design your layout
+                    - Define reusable element templates like racking,
+                    workstations, and mobile equipment
                   </li>
                   <li>
                     <span className="font-medium text-foreground">
-                      Design the layout
+                      Design a warehouse
                     </span>{" "}
-                    - Use the element library to drag and drop racking, lanes,
-                    and areas onto the canvas
+                    - Create a warehouse and place elements on the grid canvas
+                    to build your layout
                   </li>
                   <li>
                     <span className="font-medium text-foreground">
-                      Define flows
+                      Define scenarios
                     </span>{" "}
-                    - Create flow paths by clicking elements in sequence to show
-                    goods movement
+                    - Create scenarios with paths that define how goods move
+                    through your warehouse
                   </li>
                   <li>
                     <span className="font-medium text-foreground">
                       Visualize
                     </span>{" "}
-                    - View animated flow paths showing how goods move through
-                    your warehouse
+                    - Watch animated goods movement along your defined paths in
+                    real-time
                   </li>
                 </ol>
               </CardContent>
