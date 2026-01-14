@@ -39,7 +39,7 @@ const navigation = [
     icon: Layers,
   },
   {
-    name: "Simulate",
+    name: "Visualize",
     href: "/visualization",
     icon: Play,
   },

@@ -79,7 +79,8 @@ export default function ScenariosPage() {
         <div>
           <h1 className="text-2xl font-bold">Scenarios</h1>
           <p className="text-muted-foreground">
-            Create and manage flow simulation scenarios
+            Define movement patterns, spawning rules, and path configurations
+            for visualizing goods flow through your warehouses
           </p>
         </div>
         <Button asChild>
@@ -102,9 +103,9 @@ export default function ScenariosPage() {
             <Layers className="h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">No scenarios yet</h3>
             <p className="mt-2 text-sm text-muted-foreground text-center max-w-sm">
-              Create your first scenario to simulate goods movement through your
-              warehouse with multiple flows, branching logic, and multi-pallet
-              spawning.
+              Create your first scenario to visualize goods movement through
+              your warehouse with multiple flows, branching logic, and
+              multi-pallet spawning.
             </p>
             <Button className="mt-4" asChild>
               <Link href="/scenarios/new">

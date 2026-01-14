@@ -130,7 +130,8 @@ export default function ElementsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Elements</h1>
           <p className="text-muted-foreground">
-            Manage element templates and categories
+            Create and organize reusable element templates like racking,
+            workstations, and mobile equipment to build your warehouse layouts
           </p>
         </div>
         <div className="flex gap-2">

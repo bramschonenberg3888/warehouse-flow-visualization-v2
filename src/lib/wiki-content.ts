@@ -12,7 +12,7 @@ export const wikiArticles: WikiArticle[] = [
     slug: "grid-based-warehouse-model",
     title: "Grid-Based Warehouse Model",
     description:
-      "Understanding the foundational grid system that powers warehouse simulations",
+      "Understanding the foundational grid system that powers warehouse visualizations",
     category: "Core Concepts",
     lastUpdated: "2025-01-11",
     content: `
@@ -403,7 +403,7 @@ The sidebar shows your waypoint sequence:
     slug: "scenarios-and-flows",
     title: "Scenarios & Simulation",
     description:
-      "Understanding the scenario engine and how to simulate goods movement through your warehouse",
+      "Understanding the scenario engine and how to visualize goods movement through your warehouse",
     category: "Simulation",
     lastUpdated: "2025-01-11",
     content: `

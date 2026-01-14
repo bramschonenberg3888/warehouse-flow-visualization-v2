@@ -16,7 +16,8 @@ export default function WarehousesPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Warehouses</h1>
           <p className="text-muted-foreground">
-            Create and manage your warehouse layouts
+            Design warehouse floor plans by placing elements on a grid-based
+            canvas to define your facility structure
           </p>
         </div>
         <CreateWarehouseDialog />

@@ -118,9 +118,10 @@ function VisualizationContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Simulate</h1>
+          <h1 className="text-2xl font-bold">Visualize</h1>
           <p className="text-muted-foreground">
-            Run scenario simulations in your warehouses
+            Watch animated goods movement through your warehouse layouts based
+            on your configured scenarios and paths
           </p>
         </div>
       </div>
