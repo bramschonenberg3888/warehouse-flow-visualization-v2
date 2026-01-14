@@ -29,7 +29,7 @@ export default async function WikiArticlePage({
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="outline" size="sm" asChild>
           <Link href="/wiki">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Wiki
@@ -37,16 +37,21 @@ export default async function WikiArticlePage({
         </Button>
       </div>
 
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">{article.category}</Badge>
-          <span className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Calendar className="h-3 w-3" />
+      <div className="space-y-3 border-b pb-6">
+        <div className="flex items-center gap-3">
+          <Badge
+            variant="secondary"
+            className="rounded-md font-medium text-primary"
+          >
+            {article.category}
+          </Badge>
+          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Calendar className="h-3.5 w-3.5" />
             Updated {article.lastUpdated}
           </span>
         </div>
         <h1 className="text-3xl font-bold tracking-tight">{article.title}</h1>
-        <p className="text-lg text-muted-foreground">{article.description}</p>
+        <p className="text-base text-muted-foreground">{article.description}</p>
       </div>
 
       <WikiContent content={article.content} />

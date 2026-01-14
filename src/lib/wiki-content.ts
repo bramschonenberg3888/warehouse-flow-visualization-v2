@@ -507,114 +507,548 @@ The visual scenario builder allows you to:
     `.trim(),
   },
   {
-    slug: "architecture-overview",
-    title: "System Architecture",
+    slug: "path-settings",
+    title: "Path Settings Guide",
     description:
-      "Technical overview of the warehouse simulation system architecture",
-    category: "Technical",
-    lastUpdated: "2025-01-11",
+      "Configure spawn intervals, dwell times, speed, and path behavior",
+    category: "Simulation",
+    lastUpdated: "2025-01-14",
     content: `
 ## Overview
 
-The warehouse flow visualization system is built with a layered architecture centered around the grid-based model.
+Each path in a scenario has configurable settings that control how mobile elements are spawned, how fast they move, and how long they wait at each stop.
 
-## Core Layers
+## Path Settings
 
+### Spawn Interval
+
+Controls how often new mobile elements appear at the path's starting point.
+
+| Setting | Description | Example |
+|---------|-------------|---------|
+| **Interval (ms)** | Time between spawns | 3000ms = new element every 3 seconds |
+| **Min Active** | Minimum elements before spawning pauses | Keep at least 2 active |
+| **Max Active** | Maximum simultaneous elements | Cap at 10 elements |
+
+**Tips:**
+- Lower intervals = more elements, busier simulation
+- Use max active to prevent overcrowding
+- Start with 5000ms intervals for testing
+
+### Dwell Time
+
+How long elements pause at each stop along the path.
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| **Fixed** | Always same duration | Consistent process times |
+| **Range** | Random min-max | Realistic variation |
+| **None** | No waiting (pass through) | Transit points |
+
+**Example dwell times:**
+- Loading dock: 5000-10000ms (loading/unloading)
+- Checkpoint: 1000ms (scanning)
+- Intersection: 0ms (pass through)
+
+### Movement Speed
+
+Controls how fast elements travel between grid cells.
+
+| Setting | Effect |
+|---------|--------|
+| **Speed** | Pixels per second (default: 80) |
+| **Global multiplier** | Scenario-level speed control |
+
+**Speed reference:**
+- 40 px/s = 1 cell per second (slow, detailed view)
+- 80 px/s = 2 cells per second (normal pace)
+- 160 px/s = 4 cells per second (fast simulation)
+
+## Path Requirements
+
+For a path to be valid and runnable:
+
+1. **Minimum 2 stops** - Need start and end points
+2. **Valid stop references** - Grid cells must exist or element IDs must be valid
+3. **Connected warehouse** - Path must be linked to a warehouse
+4. **Passable route** - Pathfinding must find a route between consecutive stops
+
+## Stop Types
+
+Stops can reference either grid positions or placed elements:
+
+| Type | Format | Description |
+|------|--------|-------------|
+| **Grid cell** | \`grid:5:10\` | Column 5, row 10 |
+| **Element** | \`elem:uuid-here\` | Center of placed element |
+
+## Common Configurations
+
+### High-throughput receiving
 \`\`\`
-┌─────────────────────────────────────────────┐
-│           Visualization Layer               │
-│   (Canvas rendering, animations, UI)        │
-├─────────────────────────────────────────────┤
-│           Simulation Layer                  │
-│   (Scenario engine, pathfinding, state)     │
-├─────────────────────────────────────────────┤
-│           Data Layer                        │
-│   (Warehouses, elements, flows, scenarios)  │
-├─────────────────────────────────────────────┤
-│           Grid Foundation                   │
-│   (40px cells, coordinates, blocking)       │
-└─────────────────────────────────────────────┘
+Spawn interval: 2000ms
+Max active: 20
+Dwell at dock: 8000-12000ms
+Speed: 120 px/s
 \`\`\`
 
-## Grid Foundation
-
-The grid is the coordinate system for everything:
-
-\`\`\`typescript
-// Grid configuration
-const GRID_CELL_SIZE = 40  // pixels
-type GridDirection = "up" | "down" | "left" | "right"
-
-// Cell coordinates
-interface GridCell {
-  col: number
-  row: number
-}
-
-// Conversion functions
-worldToGrid(x, y) → GridCell
-gridToWorld(cell) → { x, y }
+### Quality inspection flow
+\`\`\`
+Spawn interval: 10000ms
+Max active: 5
+Dwell at station: 15000-30000ms
+Speed: 60 px/s
 \`\`\`
 
-## Data Model
+### Fast transit corridor
+\`\`\`
+Spawn interval: 1500ms
+Max active: 15
+Dwell: 0ms (all stops)
+Speed: 160 px/s
+\`\`\`
+    `.trim(),
+  },
+  {
+    slug: "best-practices",
+    title: "Warehouse Design Best Practices",
+    description:
+      "Tips and recommendations for creating effective warehouse layouts",
+    category: "Guides",
+    lastUpdated: "2025-01-14",
+    content: `
+## Overview
 
-### Element Templates
-Define visual appearance and behavior:
-- Excalidraw visual properties
-- Element behavior (static | mobile)
-- Default dimensions
+Follow these best practices to create warehouse layouts that are both visually clear and simulation-friendly.
 
-### Placed Elements
-Instances in a specific warehouse:
-- Position and dimensions
-- Reference to template
-- Custom label and metadata
+## Layout Design
 
-### Flows
-Movement paths through the warehouse:
-- Sequence of grid cell waypoints
-- Color for visual identification
-- Association with warehouse
+### Grid Alignment
 
-### Scenarios
-Simulation configurations:
-- Multiple flows with spawning rules
-- Decision logic
-- Speed settings
+Always align elements to the 40px grid:
+- Position elements at multiples of 40 (0, 40, 80, 120...)
+- Size elements in grid units (1x1 = 40x40, 2x3 = 80x120)
+- This ensures clean pathfinding and visual consistency
 
-## Simulation Engine
+### Clear Aisles
 
-The scenario engine manages:
-1. **Spawning** - Creating mobile elements based on flow config
-2. **Pathfinding** - Finding routes between grid cells
-3. **Movement** - Animating elements along paths
-4. **Dwelling** - Managing wait times at waypoints
-5. **Decisions** - Evaluating branch conditions
-6. **Completion** - Removing elements at exit points
+Leave unobstructed paths for mobile elements:
+- **Main aisles**: At least 2 cells wide (80px)
+- **Secondary aisles**: 1 cell wide minimum (40px)
+- Avoid dead ends unless intentional
 
-## Pathfinding
+### Logical Zones
 
-Uses A* algorithm for grid-based navigation:
-- Input: Start cell, end cell, blocked cells
-- Output: Sequence of cells to traverse
-- Constraints: 4-directional movement only
+Organize your warehouse into functional areas:
 
-## Visualization
+| Zone | Purpose | Element Types |
+|------|---------|---------------|
+| **Receiving** | Incoming goods | Docks, staging areas |
+| **Storage** | Inventory holding | Racking, bulk storage |
+| **Processing** | Value-add operations | Workstations, QC areas |
+| **Shipping** | Outbound preparation | Docks, staging, packing |
+| **Transit** | Movement corridors | Clear aisles, intersections |
 
-Canvas-based rendering:
-- Grid cells rendered as background
-- Static elements overlaid on grid
-- Mobile elements animated along paths
-- State indicators (moving, dwelling, waiting)
+### Color Coding
 
-## Technology Stack
+Use consistent colors for element categories:
+- **Blue** - Storage and racking
+- **Green** - Entry points (receiving docks)
+- **Orange** - Exit points (shipping docks)
+- **Yellow** - Workstations and processing
+- **Gray** - Infrastructure (walls, offices)
 
-- **Next.js 16** - React framework
-- **TypeScript** - Type safety
-- **tRPC** - API layer
-- **PostgreSQL + Drizzle** - Database
-- **Excalidraw** - Canvas editor
-- **Canvas API** - Custom visualization rendering
+## Path Design
+
+### Natural Flow
+
+Design paths that follow real-world material flow:
+1. Receiving → Storage → Processing → Shipping
+2. Avoid backtracking when possible
+3. Consider one-way aisles for high-traffic areas
+
+### Intermediate Waypoints
+
+Add waypoints at key decision points:
+- **Intersections** - Where paths might diverge
+- **Zone boundaries** - Entry/exit of functional areas
+- **Queue points** - Before workstations or docks
+
+### Traffic Separation
+
+For complex warehouses:
+- Designate lanes for different flow types
+- Use different colored paths for clarity
+- Consider time-based separation
+
+## Scenario Configuration
+
+### Start Simple
+
+When creating new scenarios:
+1. Begin with a single, short path (3-4 stops)
+2. Test with slow spawn rates (10+ seconds)
+3. Verify pathfinding works correctly
+4. Gradually add complexity
+
+### Realistic Timing
+
+Set spawn intervals and dwell times based on reality:
+- **Forklift unload**: 30-60 seconds
+- **Pallet put-away**: 45-90 seconds
+- **Pick operation**: 20-40 seconds
+- **Quality check**: 60-120 seconds
+
+### Capacity Planning
+
+Consider throughput limits:
+- How many elements can a path handle?
+- Where are bottlenecks likely?
+- Use max active limits to prevent gridlock
+
+## Common Mistakes to Avoid
+
+| Mistake | Problem | Solution |
+|---------|---------|----------|
+| Blocked paths | Elements can't reach destination | Leave clear aisles, test pathfinding |
+| Overlapping elements | Visual confusion, collision | Use grid snapping, check placement |
+| Too many simultaneous elements | Performance issues, visual clutter | Use max active limits |
+| Unrealistic speeds | Doesn't match real operations | Base settings on actual timings |
+| Missing waypoints | Paths cut through obstacles | Add intermediate stops |
+
+## Performance Tips
+
+- **Limit active elements**: 50-100 max for smooth animation
+- **Reasonable grid size**: 50x50 cells is plenty for most layouts
+- **Batch testing**: Use single spawns to debug before scaling up
+    `.trim(),
+  },
+  {
+    slug: "keyboard-shortcuts",
+    title: "Keyboard Shortcuts",
+    description: "Quick reference for keyboard shortcuts throughout the app",
+    category: "Reference",
+    lastUpdated: "2025-01-14",
+    content: `
+## Overview
+
+Use keyboard shortcuts to work more efficiently in the warehouse editor and visualization views.
+
+## Warehouse Editor (Excalidraw)
+
+### Selection & Navigation
+
+| Shortcut | Action |
+|----------|--------|
+| \`V\` | Selection tool |
+| \`H\` | Hand tool (pan) |
+| \`Space + Drag\` | Pan canvas |
+| \`Scroll\` | Zoom in/out |
+| \`Ctrl + 0\` | Reset zoom to 100% |
+| \`Ctrl + 1\` | Zoom to fit |
+
+### Element Manipulation
+
+| Shortcut | Action |
+|----------|--------|
+| \`Ctrl + D\` | Duplicate selection |
+| \`Ctrl + C\` | Copy selection |
+| \`Ctrl + V\` | Paste |
+| \`Delete\` / \`Backspace\` | Delete selection |
+| \`Ctrl + A\` | Select all |
+| \`Escape\` | Deselect / Cancel |
+
+### Drawing Tools
+
+| Shortcut | Action |
+|----------|--------|
+| \`R\` | Rectangle tool |
+| \`E\` | Ellipse tool |
+| \`D\` | Diamond tool |
+| \`L\` | Line tool |
+| \`A\` | Arrow tool |
+| \`P\` | Pencil (freehand) |
+
+### Editing
+
+| Shortcut | Action |
+|----------|--------|
+| \`Ctrl + Z\` | Undo |
+| \`Ctrl + Shift + Z\` | Redo |
+| \`Ctrl + G\` | Group selection |
+| \`Ctrl + Shift + G\` | Ungroup |
+
+### Alignment
+
+| Shortcut | Action |
+|----------|--------|
+| \`Ctrl + Shift + L\` | Align left |
+| \`Ctrl + Shift + R\` | Align right |
+| \`Ctrl + Shift + C\` | Center horizontally |
+
+## Scenario Editor
+
+### Path Building
+
+| Shortcut | Action |
+|----------|--------|
+| \`Click cell\` | Add stop to path |
+| \`Right-click stop\` | Remove stop |
+| \`Drag stop\` | Reorder in list |
+
+### Visualization Controls
+
+| Shortcut | Action |
+|----------|--------|
+| \`Space\` | Play / Pause |
+| \`R\` | Reset simulation |
+| \`+\` / \`-\` | Adjust speed |
+
+## General Navigation
+
+| Shortcut | Action |
+|----------|--------|
+| \`Ctrl + S\` | Save changes |
+| \`Escape\` | Close dialog / Cancel |
+
+## Tips
+
+- **Grid snapping** is automatic - elements align to 40px grid
+- **Hold Shift** while resizing to maintain aspect ratio
+- **Hold Ctrl** while dragging to duplicate
+- Use **Tab** to cycle through elements in a selection
+    `.trim(),
+  },
+  {
+    slug: "faq",
+    title: "FAQ & Troubleshooting",
+    description: "Answers to common questions and solutions to frequent issues",
+    category: "Reference",
+    lastUpdated: "2025-01-14",
+    content: `
+## Frequently Asked Questions
+
+### General
+
+**Q: What is the grid cell size?**
+A: All grids use 40x40 pixel cells. This is a fixed constant throughout the application.
+
+**Q: Can I change the grid cell size?**
+A: No, the 40px cell size is fundamental to the system. Design your warehouses with this in mind.
+
+**Q: What's the difference between static and mobile elements?**
+A: Static elements (racking, walls) are fixed in place and block movement. Mobile elements (pallets, forklifts) move through the grid during simulation.
+
+### Elements
+
+**Q: Why do my element changes affect all warehouses?**
+A: Template properties (colors, behavior) sync to all instances. Only position, size, rotation, and labels are instance-specific.
+
+**Q: How do I create a new element type?**
+A: Go to Elements → New Element. Design the visual appearance and set the behavior (static/mobile).
+
+**Q: Can elements overlap?**
+A: Yes, elements can visually overlap, but for simulation accuracy, static elements should occupy distinct grid cells.
+
+### Paths & Scenarios
+
+**Q: Why won't my path work?**
+A: Check these common issues:
+- Path needs at least 2 stops
+- Stops must be valid grid cells or element IDs
+- Route must not be completely blocked
+- Warehouse must be saved
+
+**Q: Elements are stuck and not moving. Why?**
+A: Possible causes:
+- Path is blocked by static elements
+- Max active limit reached
+- Dwell time set very high
+- Spawn interval too long
+
+**Q: Can paths cross each other?**
+A: Yes, multiple paths can share grid cells. Elements from different paths may pass through the same areas.
+
+### Visualization
+
+**Q: The simulation is too slow/fast. How do I adjust?**
+A: Use the speed multiplier in the scenario settings. 1x is real-time, 2x is double speed, etc.
+
+**Q: Why do elements disappear?**
+A: Elements are removed when they reach the final stop of their path. This represents completion of the flow.
+
+**Q: Can I pause the simulation?**
+A: Yes, use the play/pause button or press Space.
+
+## Troubleshooting
+
+### "No path found" Error
+
+**Cause:** Pathfinding cannot find a route between two stops.
+
+**Solutions:**
+1. Check for blocking elements between stops
+2. Ensure aisles are clear (at least 1 cell wide)
+3. Add intermediate waypoints to guide the path
+4. Verify stop coordinates are within warehouse bounds
+
+### Elements Not Spawning
+
+**Cause:** Spawn configuration issues.
+
+**Solutions:**
+1. Check spawn interval is reasonable (not 0 or very large)
+2. Verify max active limit hasn't been reached
+3. Ensure the path has valid stops
+4. Check that the scenario is playing (not paused)
+
+### Slow Performance
+
+**Cause:** Too many active elements or large grid.
+
+**Solutions:**
+1. Reduce max active elements per path
+2. Increase spawn intervals
+3. Use smaller warehouse dimensions
+4. Close other browser tabs
+
+### Elements Taking Wrong Route
+
+**Cause:** Unexpected pathfinding results.
+
+**Solutions:**
+1. Add intermediate waypoints to guide the path
+2. Check for unexpected blocked cells
+3. Ensure static elements are properly placed
+4. Test with a single element first
+
+### Changes Not Saving
+
+**Cause:** Browser or connection issues.
+
+**Solutions:**
+1. Check your internet connection
+2. Refresh the page and try again
+3. Clear browser cache
+4. Check for error messages in the console
+
+## Getting Help
+
+If you encounter issues not covered here:
+1. Check the other wiki articles for detailed explanations
+2. Review your configuration step by step
+3. Test with a minimal example (simple path, few elements)
+4. Check the browser console for error messages
+    `.trim(),
+  },
+  {
+    slug: "glossary",
+    title: "Glossary",
+    description: "Definitions of key terms used throughout the application",
+    category: "Reference",
+    lastUpdated: "2025-01-14",
+    content: `
+## Terms & Definitions
+
+### A-D
+
+**Active Element**
+A mobile element currently in the simulation, moving or dwelling along a path.
+
+**Aisle**
+Clear grid cells forming a passage for mobile elements to travel through.
+
+**Behavior**
+Classification of an element as either static (fixed) or mobile (moving).
+
+**Blocked Cell**
+A grid cell occupied by a static element that mobile elements cannot pass through.
+
+**Cell**
+A single unit of the grid, measuring 40x40 pixels. The fundamental unit of position.
+
+**Category**
+A grouping for organizing element templates (e.g., Storage, Transport, Infrastructure).
+
+**Dwell Time**
+Duration that a mobile element waits at a stop before continuing to the next stop.
+
+### E-H
+
+**Element**
+A visual object in the warehouse. Can be static (racking) or mobile (pallet).
+
+**Element Instance**
+A specific placement of an element template in a warehouse, with its own position and size.
+
+**Element Template**
+A reusable element definition with visual properties and behavior settings.
+
+**Flow**
+A movement pattern consisting of a sequence of stops (waypoints) and settings.
+
+**Grid**
+The coordinate system underlying all warehouses. Composed of 40x40 pixel cells.
+
+**Grid Coordinates**
+Position specified as column and row numbers (e.g., grid:5:10 = column 5, row 10).
+
+### I-P
+
+**Instance**
+See Element Instance.
+
+**Max Active**
+Maximum number of mobile elements that can be simultaneously active on a path.
+
+**Mobile Element**
+An element that moves during simulation (pallets, forklifts, AGVs).
+
+**Path**
+A defined route through the warehouse consisting of stops and movement settings.
+
+**Pathfinding**
+The algorithm (A*) that calculates routes between stops, avoiding blocked cells.
+
+### Q-S
+
+**Scenario**
+A simulation configuration containing one or more paths with spawning rules.
+
+**Spawn**
+The creation of a new mobile element at the start of a path.
+
+**Spawn Interval**
+Time between successive spawns of mobile elements on a path.
+
+**Speed**
+Rate of movement for mobile elements, measured in pixels per second.
+
+**Static Element**
+An element fixed in place that blocks grid cells (racking, walls, docks).
+
+**Stop**
+A waypoint in a path, referenced by grid coordinates or element ID.
+
+### T-Z
+
+**Template**
+See Element Template.
+
+**Throughput**
+Rate of elements completing a path, often measured per minute or hour.
+
+**Visualization**
+The animated display of mobile elements moving through the warehouse.
+
+**Walkable Cell**
+A grid cell not blocked by static elements, available for mobile element movement.
+
+**Warehouse**
+A layout containing placed elements on a grid canvas.
+
+**Waypoint**
+A point along a path where mobile elements travel to or through.
     `.trim(),
   },
 ]

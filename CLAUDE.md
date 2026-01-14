@@ -18,6 +18,7 @@ src/
 ├── hooks/                      # Custom React hooks (use-path-visualization, etc.)
 ├── lib/
 │   ├── path-engine/            # Path simulation engine
+│   ├── scenario-engine/        # Scenario execution engine
 │   ├── grid-config.ts          # Grid configuration (40px cells)
 │   └── *.ts                    # Utilities (element-utils, pathfinding, wiki-content)
 ├── server/
