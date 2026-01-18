@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs ls:*)",
+      "Bash(npm ls:*)",
+      "Bash(xargs:*)",
+      "Bash(bun run type-check:*)",
+      "Bash(bun run lint:*)",
+      "Bash(grep:*)",
+      "Bash(npm outdated:*)",
+      "Bash(node -e:*)",
+      "Bash(bun run build)"
+    ]
+  }
+}

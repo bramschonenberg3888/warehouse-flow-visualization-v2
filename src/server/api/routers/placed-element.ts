@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import { placedElements, type PlacedElementMetadata } from "@/server/db/schema"
@@ -67,15 +67,43 @@ export const placedElementRouter = createTRPCRouter({
       })
     )
     .mutation(async ({ input }) => {
-      const { id, ...data } = input
+      const {
+        id,
+        label,
+        positionX,
+        positionY,
+        width,
+        height,
+        rotation,
+        metadata,
+      } = input
+
+      // Build update object with only defined values
+      const updateData: Partial<{
+        label: string
+        positionX: number
+        positionY: number
+        width: number
+        height: number
+        rotation: number
+        metadata: PlacedElementMetadata
+      }> = {}
+
+      if (label !== undefined) updateData.label = label
+      if (positionX !== undefined) updateData.positionX = positionX
+      if (positionY !== undefined) updateData.positionY = positionY
+      if (width !== undefined) updateData.width = width
+      if (height !== undefined) updateData.height = height
+      if (rotation !== undefined) updateData.rotation = rotation
+      if (metadata !== undefined) updateData.metadata = metadata
 
       const [element] = await db
         .update(placedElements)
-        .set(data)
+        .set(updateData)
         .where(eq(placedElements.id, id))
         .returning()
 
-      return element
+      return element ?? null
     }),
 
   // Delete a placed element
@@ -121,12 +149,14 @@ export const placedElementRouter = createTRPCRouter({
         const existingIds = new Set(existing.map((e) => e.id))
         const inputIds = new Set(elements.filter((e) => e.id).map((e) => e.id!))
 
-        // Delete elements that are no longer present
-        const toDelete = existing.filter((e) => !inputIds.has(e.id))
-        for (const element of toDelete) {
+        // Delete elements that are no longer present (bulk delete)
+        const toDeleteIds = existing
+          .filter((e) => !inputIds.has(e.id))
+          .map((e) => e.id)
+        if (toDeleteIds.length > 0) {
           await tx
             .delete(placedElements)
-            .where(eq(placedElements.id, element.id))
+            .where(inArray(placedElements.id, toDeleteIds))
         }
 
         // Upsert elements
@@ -140,7 +170,7 @@ export const placedElementRouter = createTRPCRouter({
               .set(data)
               .where(eq(placedElements.id, id))
               .returning()
-            results.push(updated)
+            if (updated) results.push(updated)
           } else {
             // Create new element
             const { id: _id, ...data } = element
@@ -151,7 +181,7 @@ export const placedElementRouter = createTRPCRouter({
                 warehouseId,
               })
               .returning()
-            results.push(created)
+            if (created) results.push(created)
           }
         }
 

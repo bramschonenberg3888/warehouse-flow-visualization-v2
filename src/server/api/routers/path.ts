@@ -95,7 +95,7 @@ export const pathRouter = createTRPCRouter({
         .where(eq(paths.id, id))
         .returning()
 
-      return path
+      return path ?? null
     }),
 
   // Delete a path
@@ -125,7 +125,7 @@ export const pathRouter = createTRPCRouter({
         .where(eq(paths.id, input.id))
         .returning()
 
-      return path
+      return path ?? null
     }),
 
   // Duplicate a path

@@ -285,7 +285,7 @@ export const scenarioRouter = createTRPCRouter({
         .where(eq(scenarios.id, id))
         .returning()
 
-      return scenario
+      return scenario ?? null
     }),
 
   // Delete a scenario
@@ -315,7 +315,7 @@ export const scenarioRouter = createTRPCRouter({
         .where(eq(scenarios.id, input.id))
         .returning()
 
-      return scenario
+      return scenario ?? null
     }),
 
   // Duplicate a scenario (also copies all paths)

@@ -18,6 +18,8 @@ export function manhattanDistance(from: Point, to: Point): number {
   return Math.abs(to.x - from.x) + Math.abs(to.y - from.y)
 }
 
+// Note: lerp is used internally by getPositionAlongPath
+
 /**
  * Generate a path from start to end using Manhattan movement (no diagonals)
  * Returns array of points: start -> horizontal waypoint -> end

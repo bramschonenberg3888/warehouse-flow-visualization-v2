@@ -32,25 +32,37 @@ export function ElementPropertiesPanel({
   isUpdating,
   isDeleting,
 }: ElementPropertiesPanelProps) {
-  // Use element.id as key to reset state when element changes
-  const elementKey = element.id
+  // Track element data to detect external changes (e.g., from canvas resize)
+  const currentWidthCells = Math.round(element.width / GRID_CELL_SIZE)
+  const currentHeightCells = Math.round(element.height / GRID_CELL_SIZE)
+  const currentLabel = element.label ?? ""
 
-  // Initialize state based on current element
-  const initialLabel = element.label ?? ""
-  const initialWidthCells = Math.round(element.width / GRID_CELL_SIZE)
-  const initialHeightCells = Math.round(element.height / GRID_CELL_SIZE)
+  const [label, setLabel] = useState(currentLabel)
+  const [widthCells, setWidthCells] = useState(currentWidthCells)
+  const [heightCells, setHeightCells] = useState(currentHeightCells)
+  const [lastElement, setLastElement] = useState({
+    id: element.id,
+    width: element.width,
+    height: element.height,
+    label: element.label,
+  })
 
-  const [label, setLabel] = useState(initialLabel)
-  const [widthCells, setWidthCells] = useState(initialWidthCells)
-  const [heightCells, setHeightCells] = useState(initialHeightCells)
-  const [lastElementKey, setLastElementKey] = useState(elementKey)
-
-  // Reset state when element changes (using a pattern that avoids useEffect with setState)
-  if (elementKey !== lastElementKey) {
-    setLastElementKey(elementKey)
-    setLabel(element.label ?? "")
-    setWidthCells(Math.round(element.width / GRID_CELL_SIZE))
-    setHeightCells(Math.round(element.height / GRID_CELL_SIZE))
+  // Reset state when element changes OR when element's dimensions change externally
+  if (
+    element.id !== lastElement.id ||
+    element.width !== lastElement.width ||
+    element.height !== lastElement.height ||
+    element.label !== lastElement.label
+  ) {
+    setLastElement({
+      id: element.id,
+      width: element.width,
+      height: element.height,
+      label: element.label,
+    })
+    setLabel(currentLabel)
+    setWidthCells(currentWidthCells)
+    setHeightCells(currentHeightCells)
   }
 
   // Calculate display position (1-based, origin at bottom-left)
@@ -58,9 +70,9 @@ export function ElementPropertiesPanel({
   const row = gridRows - Math.floor(element.positionY / GRID_CELL_SIZE)
 
   const hasChanges =
-    label !== (element.label ?? "") ||
-    widthCells !== Math.round(element.width / GRID_CELL_SIZE) ||
-    heightCells !== Math.round(element.height / GRID_CELL_SIZE)
+    label !== currentLabel ||
+    widthCells !== currentWidthCells ||
+    heightCells !== currentHeightCells
 
   const handleSave = async () => {
     await onUpdate({

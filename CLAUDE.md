@@ -7,7 +7,7 @@ Next.js web app for designing warehouse layouts on a grid-based canvas and visua
 ```
 src/
 ├── app/                        # Next.js App Router
-│   ├── (dashboard)/            # Dashboard routes (elements, scenarios, visualization, warehouses, wiki)
+│   ├── (workspace)/            # Main app routes (elements, scenarios, visualization, warehouses, wiki)
 │   └── api/                    # NextAuth & tRPC endpoints
 ├── components/
 │   ├── ui/                     # Shadcn/ui components

@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   Warehouse,
-  LayoutDashboard,
+  Home,
   Route,
   Play,
   Settings,
@@ -19,9 +19,9 @@ import { Separator } from "@/components/ui/separator"
 
 const navigation = [
   {
-    name: "Dashboard",
+    name: "Home",
     href: "/",
-    icon: LayoutDashboard,
+    icon: Home,
   },
   {
     name: "Elements",

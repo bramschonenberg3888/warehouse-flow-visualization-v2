@@ -288,7 +288,7 @@ export class ScenarioEngine {
 
     // Calculate movement
     const pathLength = getPathLength(pallet.currentPath)
-    const speed = BASE_SPEED * this.scenario.settings.speedMultiplier
+    const speed = BASE_SPEED * (this.scenario.settings.speedMultiplier || 1)
     const distanceToMove = (speed * deltaTime) / 1000
 
     if (pathLength === 0) {

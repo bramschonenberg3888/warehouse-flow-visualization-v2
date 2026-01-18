@@ -6,7 +6,7 @@ import { ChevronRight, Home } from "lucide-react"
 
 // Map paths to readable names
 const pathNames: Record<string, string> = {
-  "": "Dashboard",
+  "": "Home",
   warehouses: "Warehouses",
   elements: "Elements",
   analytics: "Analytics",
@@ -81,7 +81,7 @@ export function Header() {
         {breadcrumbs.length === 0 && (
           <>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
-            <span className="font-semibold text-foreground">Dashboard</span>
+            <span className="font-semibold text-foreground">Home</span>
           </>
         )}
       </nav>

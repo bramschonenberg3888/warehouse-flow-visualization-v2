@@ -159,7 +159,7 @@ export const elementRouter = createTRPCRouter({
         .where(eq(elementTemplates.id, id))
         .returning()
 
-      return element
+      return element ?? null
     }),
 
   // Delete a custom element template (only non-system elements)

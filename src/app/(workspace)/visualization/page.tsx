@@ -320,7 +320,6 @@ function VisualizationContent() {
               <PathVisualizationCanvas
                 placedElements={placedElements ?? []}
                 templates={templates ?? []}
-                paths={paths ?? []}
                 pallets={state.pallets}
                 gridColumns={selectedWarehouse?.gridColumns ?? 20}
                 gridRows={selectedWarehouse?.gridRows ?? 15}

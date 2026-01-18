@@ -259,6 +259,44 @@ export default function EditorPage({ params }: EditorPageProps) {
     [selectedElementId, updateElementMutation]
   )
 
+  // Handle moving an element to a new grid position
+  const handleElementMove = useCallback(
+    async (elementId: string, newCol: number, newRow: number) => {
+      const newPositionX = newCol * GRID_CELL_SIZE
+      const newPositionY = newRow * GRID_CELL_SIZE
+      await updateElementMutation.mutateAsync({
+        id: elementId,
+        positionX: newPositionX,
+        positionY: newPositionY,
+      })
+    },
+    [updateElementMutation]
+  )
+
+  // Handle resizing an element
+  const handleElementResize = useCallback(
+    async (
+      elementId: string,
+      newCol: number,
+      newRow: number,
+      newWidthCells: number,
+      newHeightCells: number
+    ) => {
+      const newPositionX = newCol * GRID_CELL_SIZE
+      const newPositionY = newRow * GRID_CELL_SIZE
+      const newWidth = newWidthCells * GRID_CELL_SIZE
+      const newHeight = newHeightCells * GRID_CELL_SIZE
+      await updateElementMutation.mutateAsync({
+        id: elementId,
+        positionX: newPositionX,
+        positionY: newPositionY,
+        width: newWidth,
+        height: newHeight,
+      })
+    },
+    [updateElementMutation]
+  )
+
   // Handle clicking on an element to select it
   const handleElementClick = useCallback((elementId: string) => {
     setSelectedElementId((prev) => (prev === elementId ? null : elementId))
@@ -424,6 +462,8 @@ export default function EditorPage({ params }: EditorPageProps) {
             onCellClick={handleCellClick}
             onElementClick={handleElementClick}
             onElementDelete={handleElementDelete}
+            onElementMove={handleElementMove}
+            onElementResize={handleElementResize}
           />
         </div>
 

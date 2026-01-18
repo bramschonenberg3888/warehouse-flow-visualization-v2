@@ -71,7 +71,7 @@ export const warehouseRouter = createTRPCRouter({
         .where(eq(warehouses.id, id))
         .returning()
 
-      return warehouse
+      return warehouse ?? null
     }),
 
   // Delete a warehouse

@@ -88,7 +88,7 @@ export const flowRouter = createTRPCRouter({
         .where(eq(flows.id, id))
         .returning()
 
-      return flow
+      return flow ?? null
     }),
 
   // Delete a flow
@@ -118,6 +118,6 @@ export const flowRouter = createTRPCRouter({
         .where(eq(flows.id, input.id))
         .returning()
 
-      return flow
+      return flow ?? null
     }),
 })

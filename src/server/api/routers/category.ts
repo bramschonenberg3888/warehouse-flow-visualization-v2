@@ -64,7 +64,7 @@ export const categoryRouter = createTRPCRouter({
         .where(eq(categories.id, id))
         .returning()
 
-      return category
+      return category ?? null
     }),
 
   // Delete a category
