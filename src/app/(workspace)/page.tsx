@@ -22,8 +22,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="transition-shadow hover:shadow-md">
+      <div className="grid auto-rows-fr gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="h-full transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-3 text-base">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
@@ -35,14 +35,14 @@ export default function DashboardPage() {
               Create reusable element templates for your layouts
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="mt-auto pt-0">
             <Button asChild variant="outline" className="w-full">
               <Link href="/elements">Manage Elements</Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="transition-shadow hover:shadow-md">
+        <Card className="h-full transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-3 text-base">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
@@ -54,14 +54,14 @@ export default function DashboardPage() {
               Design warehouse floor plans on a grid canvas
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="mt-auto pt-0">
             <Button asChild variant="outline" className="w-full">
               <Link href="/warehouses">Manage Warehouses</Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="transition-shadow hover:shadow-md">
+        <Card className="h-full transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-3 text-base">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
@@ -73,14 +73,14 @@ export default function DashboardPage() {
               Define movement paths and spawning rules
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="mt-auto pt-0">
             <Button asChild variant="outline" className="w-full">
               <Link href="/scenarios">Manage Scenarios</Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="transition-shadow hover:shadow-md">
+        <Card className="h-full transition-shadow hover:shadow-md">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-3 text-base">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
@@ -92,7 +92,7 @@ export default function DashboardPage() {
               Watch animated goods movement in your warehouse
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="mt-auto pt-0">
             <Button asChild className="w-full">
               <Link href="/visualization">Start Visualization</Link>
             </Button>
