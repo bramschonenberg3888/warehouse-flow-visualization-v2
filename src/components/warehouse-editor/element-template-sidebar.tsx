@@ -77,7 +77,7 @@ export function ElementTemplateSidebar({
   }, [staticTemplates])
 
   return (
-    <div className="flex h-full w-64 flex-col border-r bg-card">
+    <div className="flex h-full w-64 flex-col overflow-hidden border-r bg-card">
       <div className="border-b p-4">
         <h3 className="font-semibold">Element Library</h3>
         <p className="text-xs text-muted-foreground">
@@ -98,7 +98,7 @@ export function ElementTemplateSidebar({
         </div>
       )}
 
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="min-h-0 flex-1 p-4">
         {isLoading ? (
           <div className="space-y-3">
             {[...Array(4)].map((_, i) => (

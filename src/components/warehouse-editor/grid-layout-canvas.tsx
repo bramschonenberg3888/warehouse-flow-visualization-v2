@@ -23,6 +23,7 @@ interface GridLayoutCanvasProps {
   selectedTemplateId: string | null
   selectedElementId: string | null
   onCellClick: (col: number, row: number) => void
+  onBatchPlace?: (cells: { col: number; row: number }[]) => void
   onElementClick: (elementId: string) => void
   onElementDelete: (elementId: string) => void
   onElementMove?: (elementId: string, newCol: number, newRow: number) => void
@@ -44,6 +45,7 @@ export function GridLayoutCanvas({
   selectedTemplateId,
   selectedElementId,
   onCellClick,
+  onBatchPlace,
   onElementClick,
   onElementDelete,
   onElementMove,
@@ -86,6 +88,13 @@ export function GridLayoutCanvas({
     currentHeightCells: number
   } | null>(null)
   const isResizing = resizeState !== null
+
+  // Placement drag state for placing multiple elements in a line
+  const [placementDragState, setPlacementDragState] = useState<{
+    startCell: { col: number; row: number }
+    currentCell: { col: number; row: number }
+  } | null>(null)
+  const isPlacementDragging = placementDragState !== null
 
   // Track which resize handle is being hovered (for cursor feedback)
   const [hoveredHandle, setHoveredHandle] = useState<ResizeHandle | null>(null)
@@ -147,6 +156,54 @@ export function GridLayoutCanvas({
       return true
     },
     [cellToElementMap, gridColumns, gridRows]
+  )
+
+  // Calculate cells along a horizontal or vertical line, spaced by element size
+  const calculateLineCells = useCallback(
+    (
+      start: { col: number; row: number },
+      end: { col: number; row: number },
+      widthCells: number,
+      heightCells: number
+    ): { col: number; row: number }[] => {
+      const colDiff = Math.abs(end.col - start.col)
+      const rowDiff = Math.abs(end.row - start.row)
+
+      const cells: { col: number; row: number }[] = []
+
+      if (colDiff >= rowDiff) {
+        // Horizontal line - space by element width
+        const minCol = Math.min(start.col, end.col)
+        const maxCol = Math.max(start.col, end.col)
+        for (let col = minCol; col <= maxCol; col += widthCells) {
+          cells.push({ col, row: start.row })
+        }
+      } else {
+        // Vertical line - space by element height
+        const minRow = Math.min(start.row, end.row)
+        const maxRow = Math.max(start.row, end.row)
+        for (let row = minRow; row <= maxRow; row += heightCells) {
+          cells.push({ col: start.col, row })
+        }
+      }
+
+      return cells
+    },
+    []
+  )
+
+  // Get valid placement cells (not occupied) from a line
+  const getValidPlacementCells = useCallback(
+    (
+      cells: { col: number; row: number }[],
+      widthCells: number,
+      heightCells: number
+    ): { col: number; row: number }[] => {
+      return cells.filter((cell) =>
+        canPlaceElement(cell.col, cell.row, widthCells, heightCells)
+      )
+    },
+    [canPlaceElement]
   )
 
   // Resize handler
@@ -271,12 +328,9 @@ export function GridLayoutCanvas({
     [selectedElementId, placedElements, elementYOffset, viewTransform.scale]
   )
 
-  // Handle mouse down - start resize or drag
+  // Handle mouse down - start resize, drag, or placement drag
   const handleMouseDown = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
-      // Don't start drag/resize if in placement mode
-      if (selectedTemplateId) return
-
       const canvas = canvasRef.current
       if (!canvas) return
 
@@ -285,6 +339,24 @@ export function GridLayoutCanvas({
       const canvasY = event.clientY - rect.top
 
       const world = canvasToWorld(canvasX, canvasY)
+      const cell = worldToGrid(world.x, world.y)
+
+      // If in placement mode, start placement drag
+      if (selectedTemplateId) {
+        if (
+          cell.col >= 0 &&
+          cell.col < gridColumns &&
+          cell.row >= 0 &&
+          cell.row < gridRows
+        ) {
+          setPlacementDragState({
+            startCell: { col: cell.col, row: cell.row },
+            currentCell: { col: cell.col, row: cell.row },
+          })
+          event.preventDefault()
+        }
+        return
+      }
 
       // First check for resize handles on selected element
       const resizeHit = findResizeHandle(world.x, world.y)
@@ -333,6 +405,8 @@ export function GridLayoutCanvas({
       canvasToWorld,
       findElementAtPosition,
       findResizeHandle,
+      gridColumns,
+      gridRows,
       onElementClick,
       onElementMove,
       onElementResize,
@@ -452,6 +526,14 @@ export function GridLayoutCanvas({
         return
       }
 
+      // Update placement drag position
+      if (placementDragState) {
+        setPlacementDragState((prev) =>
+          prev ? { ...prev, currentCell: clampedCell } : null
+        )
+        return
+      }
+
       // Check if hovering over a resize handle (for cursor feedback)
       const handleHit = findResizeHandle(world.x, world.y)
       setHoveredHandle(handleHit?.handle ?? null)
@@ -462,6 +544,7 @@ export function GridLayoutCanvas({
       gridRows,
       dragState,
       resizeState,
+      placementDragState,
       findResizeHandle,
     ]
   )
@@ -544,6 +627,44 @@ export function GridLayoutCanvas({
         return
       }
 
+      // Handle placement drag completion
+      if (placementDragState && selectedTemplate) {
+        const { startCell, currentCell } = placementDragState
+        const widthCells = Math.ceil(
+          selectedTemplate.defaultWidth / GRID_CELL_SIZE
+        )
+        const heightCells = Math.ceil(
+          selectedTemplate.defaultHeight / GRID_CELL_SIZE
+        )
+        const lineCells = calculateLineCells(
+          startCell,
+          currentCell,
+          widthCells,
+          heightCells
+        )
+
+        // If only one cell (click, not drag), use normal cell click for label dialog
+        if (lineCells.length === 1) {
+          setPlacementDragState(null)
+          onCellClick(startCell.col, startCell.row)
+          return
+        }
+
+        // Multiple cells - batch place without labels
+        const validCells = getValidPlacementCells(
+          lineCells,
+          widthCells,
+          heightCells
+        )
+
+        if (validCells.length > 0 && onBatchPlace) {
+          onBatchPlace(validCells)
+        }
+
+        setPlacementDragState(null)
+        return
+      }
+
       // If not dragging or resizing, handle as regular click
       const canvas = canvasRef.current
       if (!canvas) return
@@ -575,6 +696,11 @@ export function GridLayoutCanvas({
     [
       resizeState,
       dragState,
+      placementDragState,
+      selectedTemplate,
+      calculateLineCells,
+      getValidPlacementCells,
+      onBatchPlace,
       canPlaceElement,
       onElementResize,
       onElementMove,
@@ -587,7 +713,7 @@ export function GridLayoutCanvas({
     ]
   )
 
-  // Cancel drag/resize if mouse leaves canvas
+  // Cancel drag/resize/placement if mouse leaves canvas
   const handleMouseLeave = useCallback(() => {
     setHoveredCell(null)
     setHoveredHandle(null)
@@ -597,7 +723,10 @@ export function GridLayoutCanvas({
     if (resizeState) {
       setResizeState(null)
     }
-  }, [dragState, resizeState])
+    if (placementDragState) {
+      setPlacementDragState(null)
+    }
+  }, [dragState, resizeState, placementDragState])
 
   // Handle keyboard for delete
   useEffect(() => {
@@ -663,24 +792,60 @@ export function GridLayoutCanvas({
       gridRows * scaledCellSize
     )
 
-    // Draw template preview on hover
-    if (hoveredCell && selectedTemplate) {
-      const worldPos = gridToWorldCorner(hoveredCell)
-      const canvasPos = worldToCanvas(worldPos.x, worldPos.y)
+    // Draw template preview on hover or placement drag
+    if (selectedTemplate) {
       const visualProps = getTemplateVisualProperties(
         selectedTemplate.excalidrawData
       )
-
       const width = selectedTemplate.defaultWidth * viewTransform.scale
       const height = selectedTemplate.defaultHeight * viewTransform.scale
+      const widthCells = Math.ceil(
+        selectedTemplate.defaultWidth / GRID_CELL_SIZE
+      )
+      const heightCells = Math.ceil(
+        selectedTemplate.defaultHeight / GRID_CELL_SIZE
+      )
 
-      ctx.globalAlpha = 0.5
-      ctx.fillStyle = visualProps.backgroundColor
-      ctx.fillRect(canvasPos.x, canvasPos.y, width, height)
-      ctx.strokeStyle = visualProps.strokeColor
-      ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
-      ctx.strokeRect(canvasPos.x, canvasPos.y, width, height)
-      ctx.globalAlpha = 1
+      if (placementDragState) {
+        // Draw preview along drag line
+        const lineCells = calculateLineCells(
+          placementDragState.startCell,
+          placementDragState.currentCell,
+          widthCells,
+          heightCells
+        )
+
+        for (const cell of lineCells) {
+          const worldPos = gridToWorldCorner(cell)
+          const canvasPos = worldToCanvas(worldPos.x, worldPos.y)
+          const isValid = canPlaceElement(
+            cell.col,
+            cell.row,
+            widthCells,
+            heightCells
+          )
+
+          ctx.globalAlpha = 0.5
+          ctx.fillStyle = isValid ? visualProps.backgroundColor : "#fecaca"
+          ctx.fillRect(canvasPos.x, canvasPos.y, width, height)
+          ctx.strokeStyle = isValid ? visualProps.strokeColor : "#ef4444"
+          ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
+          ctx.strokeRect(canvasPos.x, canvasPos.y, width, height)
+        }
+        ctx.globalAlpha = 1
+      } else if (hoveredCell) {
+        // Draw single preview on hover
+        const worldPos = gridToWorldCorner(hoveredCell)
+        const canvasPos = worldToCanvas(worldPos.x, worldPos.y)
+
+        ctx.globalAlpha = 0.5
+        ctx.fillStyle = visualProps.backgroundColor
+        ctx.fillRect(canvasPos.x, canvasPos.y, width, height)
+        ctx.strokeStyle = visualProps.strokeColor
+        ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
+        ctx.strokeRect(canvasPos.x, canvasPos.y, width, height)
+        ctx.globalAlpha = 1
+      }
     }
 
     // Draw placed elements (with visual offset for grid preview)
@@ -887,7 +1052,9 @@ export function GridLayoutCanvas({
     elementYOffset,
     dragState,
     resizeState,
+    placementDragState,
     canPlaceElement,
+    calculateLineCells,
   ])
 
   // Determine cursor style based on current operation or handle being hovered
@@ -940,9 +1107,14 @@ export function GridLayoutCanvas({
           Release to resize element
         </div>
       )}
-      {selectedTemplateId && !selectedElementId && (
+      {isPlacementDragging && (
+        <div className="absolute top-2 right-2 bg-blue-500/90 text-white px-3 py-1.5 rounded-md text-sm">
+          Release to place elements along line
+        </div>
+      )}
+      {selectedTemplateId && !selectedElementId && !isPlacementDragging && (
         <div className="absolute top-2 left-2 bg-blue-500/90 text-white px-3 py-1.5 rounded-md text-sm">
-          Click on grid to place element
+          Click to place | Drag for line
         </div>
       )}
     </div>

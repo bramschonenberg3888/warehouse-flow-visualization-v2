@@ -72,6 +72,13 @@ export default function EditorPage({ params }: EditorPageProps) {
     },
   })
 
+  const createManyMutation = api.placedElement.createMany.useMutation({
+    onSuccess: () => {
+      utils.placedElement.getByWarehouse.invalidate({ warehouseId: id })
+      setSelectedTemplateId(null)
+    },
+  })
+
   const deleteMutation = api.placedElement.delete.useMutation({
     onSuccess: () => {
       utils.placedElement.getByWarehouse.invalidate({ warehouseId: id })
@@ -311,6 +318,25 @@ export default function EditorPage({ params }: EditorPageProps) {
     [deleteMutation]
   )
 
+  // Handle batch placement of multiple elements along a line
+  const handleBatchPlace = useCallback(
+    async (cells: { col: number; row: number }[]) => {
+      if (!selectedTemplateId || !warehouse) return
+
+      const template = templates?.find((t) => t.id === selectedTemplateId)
+      if (!template) return
+
+      await createManyMutation.mutateAsync({
+        warehouseId: warehouse.id,
+        elementTemplateId: template.id,
+        width: template.defaultWidth,
+        height: template.defaultHeight,
+        cells,
+      })
+    },
+    [selectedTemplateId, warehouse, templates, createManyMutation]
+  )
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -460,6 +486,7 @@ export default function EditorPage({ params }: EditorPageProps) {
             selectedTemplateId={selectedTemplateId}
             selectedElementId={selectedElementId}
             onCellClick={handleCellClick}
+            onBatchPlace={handleBatchPlace}
             onElementClick={handleElementClick}
             onElementDelete={handleElementDelete}
             onElementMove={handleElementMove}

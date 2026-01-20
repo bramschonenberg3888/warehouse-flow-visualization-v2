@@ -2,7 +2,19 @@ import { z } from "zod"
 import { eq, inArray } from "drizzle-orm"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
-import { placedElements, type PlacedElementMetadata } from "@/server/db/schema"
+import {
+  placedElements,
+  warehouses,
+  type PlacedElementMetadata,
+} from "@/server/db/schema"
+
+// Helper to update warehouse's updatedAt timestamp
+async function touchWarehouse(warehouseId: string) {
+  await db
+    .update(warehouses)
+    .set({ updatedAt: new Date() })
+    .where(eq(warehouses.id, warehouseId))
+}
 
 export const placedElementRouter = createTRPCRouter({
   // Get all placed elements for a warehouse
@@ -48,6 +60,8 @@ export const placedElementRouter = createTRPCRouter({
         .insert(placedElements)
         .values(input)
         .returning()
+
+      await touchWarehouse(input.warehouseId)
 
       return element
     }),
@@ -103,6 +117,10 @@ export const placedElementRouter = createTRPCRouter({
         .where(eq(placedElements.id, id))
         .returning()
 
+      if (element) {
+        await touchWarehouse(element.warehouseId)
+      }
+
       return element ?? null
     }),
 
@@ -110,8 +128,63 @@ export const placedElementRouter = createTRPCRouter({
   delete: publicProcedure
     .input(z.object({ id: z.string().uuid() }))
     .mutation(async ({ input }) => {
+      // Get the element first to find the warehouseId
+      const [element] = await db
+        .select({ warehouseId: placedElements.warehouseId })
+        .from(placedElements)
+        .where(eq(placedElements.id, input.id))
+
       await db.delete(placedElements).where(eq(placedElements.id, input.id))
+
+      if (element) {
+        await touchWarehouse(element.warehouseId)
+      }
+
       return { success: true }
+    }),
+
+  // Create multiple placed elements at once (for batch placement)
+  createMany: publicProcedure
+    .input(
+      z.object({
+        warehouseId: z.string().uuid(),
+        elementTemplateId: z.string().uuid(),
+        width: z.number().positive(),
+        height: z.number().positive(),
+        cells: z.array(
+          z.object({
+            col: z.number().int().min(0),
+            row: z.number().int().min(0),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const { warehouseId, elementTemplateId, width, height, cells } = input
+
+      if (cells.length === 0) {
+        return []
+      }
+
+      const values = cells.map((cell) => ({
+        warehouseId,
+        elementTemplateId,
+        excalidrawId: crypto.randomUUID(),
+        positionX: cell.col * 40, // GRID_CELL_SIZE
+        positionY: cell.row * 40,
+        width,
+        height,
+        rotation: 0,
+      }))
+
+      const elements = await db
+        .insert(placedElements)
+        .values(values)
+        .returning()
+
+      await touchWarehouse(warehouseId)
+
+      return elements
     }),
 
   // Bulk sync placed elements (for saving entire canvas state)
@@ -184,6 +257,12 @@ export const placedElementRouter = createTRPCRouter({
             if (created) results.push(created)
           }
         }
+
+        // Update warehouse's updatedAt timestamp
+        await tx
+          .update(warehouses)
+          .set({ updatedAt: new Date() })
+          .where(eq(warehouses.id, warehouseId))
 
         return results
       })
