@@ -30,22 +30,6 @@ import {
   calculateBoundingBox,
   extractTemplateElements,
 } from "@/lib/element-utils"
-import { GRID_CELL_SIZE } from "@/lib/grid-config"
-
-// Grid size presets (in cells)
-const gridSizePresets = [
-  { label: "Auto", width: 0, height: 0 },
-  { label: "1×1", width: 1, height: 1 },
-  { label: "1×2", width: 1, height: 2 },
-  { label: "2×1", width: 2, height: 1 },
-  { label: "2×2", width: 2, height: 2 },
-  { label: "2×3", width: 2, height: 3 },
-  { label: "3×2", width: 3, height: 2 },
-  { label: "3×3", width: 3, height: 3 },
-  { label: "4×2", width: 4, height: 2 },
-  { label: "2×4", width: 2, height: 4 },
-  { label: "4×4", width: 4, height: 4 },
-]
 
 // Preset color palette for quick category creation
 const colorPresets = [
@@ -71,7 +55,6 @@ export default function NewElementPage() {
     useState<ExcalidrawImperativeAPI | null>(null)
   const [name, setName] = useState("")
   const [categoryId, setCategoryId] = useState<string>("")
-  const [gridSizePreset, setGridSizePreset] = useState("Auto")
   const [hasElements, setHasElements] = useState(false)
 
   // Inline category creation state
@@ -152,18 +135,6 @@ export default function NewElementPage() {
       elements: templateElements,
     }
 
-    // Determine final dimensions: use preset if selected, otherwise use bounding box
-    const selectedPreset = gridSizePresets.find(
-      (p) => p.label === gridSizePreset
-    )
-    const usePreset = selectedPreset && selectedPreset.width > 0
-    const finalWidth = usePreset
-      ? selectedPreset.width * GRID_CELL_SIZE
-      : bbox.width || 100
-    const finalHeight = usePreset
-      ? selectedPreset.height * GRID_CELL_SIZE
-      : bbox.height || 100
-
     // Get icon from selected category or default
     const selectedCategory = categories?.find((c) => c.id === categoryId)
     const icon = selectedCategory?.icon || "Package"
@@ -172,18 +143,11 @@ export default function NewElementPage() {
       name: name.trim(),
       categoryId: categoryId || null,
       icon,
-      defaultWidth: finalWidth,
-      defaultHeight: finalHeight,
+      defaultWidth: bbox.width || 100,
+      defaultHeight: bbox.height || 100,
       excalidrawData,
     })
-  }, [
-    excalidrawAPI,
-    name,
-    categoryId,
-    gridSizePreset,
-    categories,
-    createMutation,
-  ])
+  }, [excalidrawAPI, name, categoryId, categories, createMutation])
 
   const canSave =
     name.trim().length > 0 && hasElements && !createMutation.isPending
@@ -284,20 +248,6 @@ export default function NewElementPage() {
               </PopoverContent>
             </Popover>
           </div>
-          <Select value={gridSizePreset} onValueChange={setGridSizePreset}>
-            <SelectTrigger className="w-28">
-              <SelectValue placeholder="Grid Size" />
-            </SelectTrigger>
-            <SelectContent>
-              {gridSizePresets.map((preset) => (
-                <SelectItem key={preset.label} value={preset.label}>
-                  {preset.label === "Auto"
-                    ? "Auto"
-                    : `${preset.label} (${preset.width * GRID_CELL_SIZE}×${preset.height * GRID_CELL_SIZE})`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
         <Button onClick={handleSave} disabled={!canSave}>
           {createMutation.isPending ? (
