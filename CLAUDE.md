@@ -93,3 +93,88 @@ Paths define movement sequences within a scenario:
 ## Documentation
 
 Wiki content is in `src/lib/wiki-content.ts`. Update when changing user-facing behavior.
+
+## Design System
+
+This project uses the **Ocean + Plus Jakarta Sans** design system.
+
+### UI Components
+
+**Always use shadcn/ui components.** Install with:
+
+```bash
+npx shadcn@latest add [component-name]
+```
+
+Available components: button, card, input, label, select, checkbox, dialog, dropdown-menu, alert, badge, avatar, tabs, table, form, toast, tooltip, popover, separator, skeleton, switch, textarea, and more.
+
+**Never create custom components** when a shadcn/ui equivalent exists.
+
+### Styling Rules
+
+**Use semantic Tailwind classes** that reference the design system:
+
+| Use This                  | Not This          |
+| ------------------------- | ----------------- |
+| `bg-primary`              | `bg-blue-500`     |
+| `bg-secondary`            | `bg-gray-100`     |
+| `bg-muted`                | `bg-slate-100`    |
+| `bg-accent`               | `bg-blue-100`     |
+| `bg-destructive`          | `bg-red-500`      |
+| `bg-card`                 | `bg-white`        |
+| `bg-background`           | `bg-white`        |
+| `text-foreground`         | `text-gray-900`   |
+| `text-muted-foreground`   | `text-gray-500`   |
+| `text-primary-foreground` | `text-white`      |
+| `border-border`           | `border-gray-200` |
+| `border-input`            | `border-gray-300` |
+| `ring-ring`               | `ring-blue-500`   |
+
+**Never hardcode colors.** No hex codes (`#3b82f6`), no Tailwind palette colors (`blue-500`, `gray-100`), no OKLCH values.
+
+### Color Semantics
+
+- `primary` - Main actions, links, focus states (Ocean blue)
+- `secondary` - Secondary actions, less emphasis
+- `muted` - Disabled states, subtle backgrounds
+- `accent` - Hover states, highlights
+- `destructive` - Delete, error, danger actions
+- `card` - Card backgrounds
+- `popover` - Dropdown/tooltip backgrounds
+
+### Dark Mode
+
+Dark mode is automatic via CSS variables. To enable:
+
+- Add `dark` class to `<html>` element
+- Variables auto-switch, no code changes needed
+
+For dark mode toggle, use:
+
+```tsx
+document.documentElement.classList.toggle("dark")
+```
+
+### Typography
+
+Font family is set globally (Plus Jakarta Sans). Use Tailwind's size classes:
+
+- `text-sm`, `text-base`, `text-lg`, `text-xl`, etc.
+- Font weights: `font-normal`, `font-medium`, `font-semibold`, `font-bold`
+
+### Spacing & Layout
+
+Use Tailwind's default spacing scale. For consistent sections:
+
+- Page padding: `p-6` or `p-8`
+- Section gaps: `space-y-8` or `gap-8`
+- Component gaps: `space-y-4` or `gap-4`
+- Inline gaps: `space-x-2` or `gap-2`
+
+### Border Radius
+
+Use the design system radius tokens:
+
+- `rounded-sm` - Subtle rounding
+- `rounded-md` - Default for inputs, buttons
+- `rounded-lg` - Cards, dialogs
