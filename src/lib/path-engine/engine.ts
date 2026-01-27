@@ -290,6 +290,13 @@ export class PathEngine {
       if (!segment || segment.length === 0) {
         // No segment, skip to next stop
         pallet.currentStopIndex++
+
+        // Bounds check - if we've gone past the last stop, remove pallet
+        if (pallet.currentStopIndex >= stopPositions.length) {
+          this.removePallet(pallet, state)
+          return
+        }
+
         pallet.state = "dwelling"
         pallet.dwellRemaining = path.dwellTime
         const newPos = stopPositions[pallet.currentStopIndex]
@@ -313,6 +320,13 @@ export class PathEngine {
       if (pallet.progress >= 1) {
         // Arrived at next stop
         pallet.currentStopIndex++
+
+        // Bounds check - if we've gone past the last stop, remove pallet
+        if (pallet.currentStopIndex >= stopPositions.length) {
+          this.removePallet(pallet, state)
+          return
+        }
+
         const newPos = stopPositions[pallet.currentStopIndex]
         if (newPos) {
           pallet.x = newPos.x

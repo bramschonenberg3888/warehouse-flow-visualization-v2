@@ -47,7 +47,6 @@ export function usePathVisualization(
 
   // Refs for animation loop
   const engineRef = useRef<PathEngine | null>(null)
-  const animationFrameRef = useRef<number | null>(null)
   const speedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isRunningRef = useRef(false)
   const lastTimeRef = useRef<number>(0)
@@ -135,12 +134,6 @@ export function usePathVisualization(
   // Stop animation
   const stop = useCallback(() => {
     isRunningRef.current = false
-
-    if (animationFrameRef.current !== null) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
-    }
-
     setState((prev) => ({ ...prev, isRunning: false }))
   }, [])
 

@@ -62,6 +62,15 @@ export function PathCanvas({
     return map
   }, [templates])
 
+  // Build placed element lookup map for O(1) lookups
+  const placedElementMap = useMemo(() => {
+    const map = new Map<string, PlacedElement>()
+    for (const element of placedElements) {
+      map.set(element.id, element)
+    }
+    return map
+  }, [placedElements])
+
   // Build sequence set for quick lookup (selected path only)
   const selectedStopsSet = useMemo(
     () => new Set(selectedPath?.stops ?? []),
@@ -198,7 +207,7 @@ export function PathCanvas({
       if (gridCell) {
         return gridToWorld(gridCell)
       }
-      const element = placedElements.find((e) => e.id === id)
+      const element = placedElementMap.get(id)
       if (element) {
         return {
           x: element.positionX + element.width / 2,
@@ -207,7 +216,7 @@ export function PathCanvas({
       }
       return null
     },
-    [placedElements]
+    [placedElementMap]
   )
 
   // Draw canvas

@@ -49,6 +49,8 @@ interface FlowState {
   batchProgress: number
   /** Last batch spawn time (for batch mode) */
   lastBatchSpawnTime: number
+  /** Active (non-completed) pallet count for this flow */
+  activeCount: number
 }
 
 export class ScenarioEngine {
@@ -91,6 +93,7 @@ export class ScenarioEngine {
           totalSpawned: 0,
           batchProgress: 0,
           lastBatchSpawnTime: 0,
+          activeCount: 0,
         })
       }
     }
@@ -157,8 +160,7 @@ export class ScenarioEngine {
 
       // Check limits
       if (spawning.maxActive) {
-        const activeCount = this.getActivePalletCount(flow.id)
-        if (activeCount >= spawning.maxActive) continue
+        if (state.activeCount >= spawning.maxActive) continue
       }
 
       if (spawning.totalLimit && state.totalSpawned >= spawning.totalLimit) {
@@ -237,6 +239,12 @@ export class ScenarioEngine {
 
     this.pallets.set(pallet.id, pallet)
     this.incrementVisitCount(pallet.currentNodeId)
+
+    // Increment active count for this flow
+    const flowState = this.flowStates.get(flow.id)
+    if (flowState) {
+      flowState.activeCount++
+    }
 
     this.config.events?.onPalletSpawned?.(pallet)
 
@@ -475,6 +483,12 @@ export class ScenarioEngine {
 
     this.config.events?.onPalletCompleted?.(pallet)
 
+    // Decrement active count for this flow
+    const flowState = this.flowStates.get(pallet.flowId)
+    if (flowState) {
+      flowState.activeCount--
+    }
+
     // Remove pallet after completion
     this.pallets.delete(pallet.id)
   }
@@ -620,13 +634,8 @@ export class ScenarioEngine {
   }
 
   private getActivePalletCount(flowId: string): number {
-    let count = 0
-    for (const pallet of this.pallets.values()) {
-      if (pallet.flowId === flowId && pallet.state !== "completed") {
-        count++
-      }
-    }
-    return count
+    const flowState = this.flowStates.get(flowId)
+    return flowState?.activeCount ?? 0
   }
 
   // ==========================================================================
@@ -666,6 +675,7 @@ export class ScenarioEngine {
           totalSpawned: 0,
           batchProgress: 0,
           lastBatchSpawnTime: 0,
+          activeCount: 0,
         })
       }
     }
