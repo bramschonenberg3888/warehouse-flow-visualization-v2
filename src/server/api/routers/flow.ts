@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { eq } from "drizzle-orm"
+import { TRPCError } from "@trpc/server"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import { flows } from "@/server/db/schema"
@@ -109,7 +110,10 @@ export const flowRouter = createTRPCRouter({
         .where(eq(flows.id, input.id))
 
       if (!existing) {
-        throw new Error("Flow not found")
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Flow not found",
+        })
       }
 
       const [flow] = await db

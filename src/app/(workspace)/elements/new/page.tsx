@@ -75,6 +75,9 @@ export default function NewElementPage() {
       setNewCategoryName("")
       setNewCategoryColor(colorPresets[0]!)
     },
+    onError: (error) => {
+      alert(error.message || "Failed to create category")
+    },
   })
 
   const handleCreateCategory = () => {
@@ -93,6 +96,9 @@ export default function NewElementPage() {
       await utils.element.getAll.invalidate()
       router.push("/elements")
       router.refresh()
+    },
+    onError: (error) => {
+      alert(error.message || "Failed to create element")
     },
   })
 

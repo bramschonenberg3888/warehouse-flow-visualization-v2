@@ -99,6 +99,9 @@ export default function EditElementPage({ params }: EditElementPageProps) {
       setNewCategoryName("")
       setNewCategoryColor(colorPresets[0]!)
     },
+    onError: (error) => {
+      alert(error.message || "Failed to create category")
+    },
   })
 
   const handleCreateCategory = () => {
@@ -128,6 +131,9 @@ export default function EditElementPage({ params }: EditElementPageProps) {
       await utils.element.getById.invalidate({ id })
       router.push("/elements")
       router.refresh()
+    },
+    onError: (error) => {
+      alert(error.message || "Failed to update element")
     },
   })
 

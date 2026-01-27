@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { eq } from "drizzle-orm"
+import { TRPCError } from "@trpc/server"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import { scenarios, paths } from "@/server/db/schema"
@@ -306,7 +307,10 @@ export const scenarioRouter = createTRPCRouter({
         .where(eq(scenarios.id, input.id))
 
       if (!existing) {
-        throw new Error("Scenario not found")
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Scenario not found",
+        })
       }
 
       const [scenario] = await db
@@ -333,7 +337,10 @@ export const scenarioRouter = createTRPCRouter({
         .where(eq(scenarios.id, input.id))
 
       if (!existing) {
-        throw new Error("Scenario not found")
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Scenario not found",
+        })
       }
 
       // Create the new scenario
@@ -351,7 +358,10 @@ export const scenarioRouter = createTRPCRouter({
         .returning()
 
       if (!scenario) {
-        throw new Error("Failed to create scenario")
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create scenario",
+        })
       }
 
       // Copy all paths from the original scenario

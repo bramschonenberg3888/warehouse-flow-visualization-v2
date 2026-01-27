@@ -85,6 +85,9 @@ export default function FlowEditorPage() {
       utils.flow.getByWarehouse.invalidate({ warehouseId })
       router.push("/flows")
     },
+    onError: (error) => {
+      alert(error.message || "Failed to create flow")
+    },
   })
 
   const updateMutation = api.flow.update.useMutation({
@@ -95,6 +98,9 @@ export default function FlowEditorPage() {
         })
       }
       router.push("/flows")
+    },
+    onError: (error) => {
+      alert(error.message || "Failed to update flow")
     },
   })
 

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { eq } from "drizzle-orm"
+import { TRPCError } from "@trpc/server"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import {
@@ -157,11 +158,17 @@ export const elementRouter = createTRPCRouter({
         .where(eq(elementTemplates.id, id))
 
       if (!existing) {
-        throw new Error("Element not found")
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Element not found",
+        })
       }
 
       if (existing.isSystem) {
-        throw new Error("Cannot update system elements")
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Cannot update system elements",
+        })
       }
 
       const [element] = await db
@@ -184,11 +191,17 @@ export const elementRouter = createTRPCRouter({
         .where(eq(elementTemplates.id, input.id))
 
       if (!element) {
-        throw new Error("Element not found")
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Element not found",
+        })
       }
 
       if (element.isSystem) {
-        throw new Error("Cannot delete system elements")
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Cannot delete system elements",
+        })
       }
 
       // Check if element is used in any warehouses
@@ -199,9 +212,11 @@ export const elementRouter = createTRPCRouter({
         .limit(1)
 
       if (usedIn.length > 0) {
-        throw new Error(
-          "Cannot delete element: it is used in one or more warehouses. Remove all instances first."
-        )
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "Cannot delete element: it is used in one or more warehouses. Remove all instances first.",
+        })
       }
 
       await db.delete(elementTemplates).where(eq(elementTemplates.id, input.id))

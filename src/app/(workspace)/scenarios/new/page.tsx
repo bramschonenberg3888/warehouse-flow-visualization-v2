@@ -42,6 +42,9 @@ export default function NewScenarioPage() {
         router.push(`/scenarios/${scenario.id}`)
       }
     },
+    onError: (error) => {
+      alert(error.message || "Failed to create scenario")
+    },
   })
 
   const handleCreate = async () => {
@@ -54,6 +57,8 @@ export default function NewScenarioPage() {
         description: description.trim() || undefined,
         warehouseId,
       })
+    } catch {
+      // Error is handled by onError callback
     } finally {
       setIsCreating(false)
     }

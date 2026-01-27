@@ -70,12 +70,18 @@ export default function EditorPage({ params }: EditorPageProps) {
       utils.placedElement.getByWarehouse.invalidate({ warehouseId: id })
       setHasUnsavedChanges(false)
     },
+    onError: (error) => {
+      alert(error.message || "Failed to create element")
+    },
   })
 
   const createManyMutation = api.placedElement.createMany.useMutation({
     onSuccess: () => {
       utils.placedElement.getByWarehouse.invalidate({ warehouseId: id })
       setSelectedTemplateId(null)
+    },
+    onError: (error) => {
+      alert(error.message || "Failed to create elements")
     },
   })
 
@@ -84,11 +90,17 @@ export default function EditorPage({ params }: EditorPageProps) {
       utils.placedElement.getByWarehouse.invalidate({ warehouseId: id })
       setSelectedElementId(null)
     },
+    onError: (error) => {
+      alert(error.message || "Failed to delete element")
+    },
   })
 
   const updateElementMutation = api.placedElement.update.useMutation({
     onSuccess: () => {
       utils.placedElement.getByWarehouse.invalidate({ warehouseId: id })
+    },
+    onError: (error) => {
+      alert(error.message || "Failed to update element")
     },
   })
 
@@ -97,6 +109,9 @@ export default function EditorPage({ params }: EditorPageProps) {
       utils.warehouse.getById.invalidate({ id })
       setGridColumns(null)
       setGridRows(null)
+    },
+    onError: (error) => {
+      alert(error.message || "Failed to update warehouse")
     },
   })
 

@@ -132,11 +132,17 @@ function FlowCard({ flow, warehouseId }: FlowCardProps) {
     onSuccess: () => {
       utils.flow.getByWarehouse.invalidate({ warehouseId })
     },
+    onError: (error) => {
+      alert(error.message || "Failed to delete flow")
+    },
   })
 
   const toggleActiveMutation = api.flow.toggleActive.useMutation({
     onSuccess: () => {
       utils.flow.getByWarehouse.invalidate({ warehouseId })
+    },
+    onError: (error) => {
+      alert(error.message || "Failed to toggle flow")
     },
   })
 

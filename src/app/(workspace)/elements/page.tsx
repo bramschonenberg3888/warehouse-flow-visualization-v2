@@ -386,6 +386,9 @@ function CategoryManageDialog({ categories }: CategoryManageDialogProps) {
       utils.category.getAll.invalidate()
       resetForm()
     },
+    onError: (error) => {
+      alert(error.message || "Failed to create category")
+    },
   })
 
   const updateMutation = api.category.update.useMutation({
@@ -393,12 +396,18 @@ function CategoryManageDialog({ categories }: CategoryManageDialogProps) {
       utils.category.getAll.invalidate()
       resetForm()
     },
+    onError: (error) => {
+      alert(error.message || "Failed to update category")
+    },
   })
 
   const deleteMutation = api.category.delete.useMutation({
     onSuccess: () => {
       utils.category.getAll.invalidate()
       utils.element.getAll.invalidate()
+    },
+    onError: (error) => {
+      alert(error.message || "Failed to delete category")
     },
   })
 

@@ -74,12 +74,18 @@ export default function WarehouseDetailPage({
         router.push(`/warehouses/${newWarehouse.id}`)
       }
     },
+    onError: (error) => {
+      alert(error.message || "Failed to duplicate warehouse")
+    },
   })
 
   const deleteMutation = api.warehouse.delete.useMutation({
     onSuccess: () => {
       utils.warehouse.getAll.invalidate()
       router.push("/warehouses")
+    },
+    onError: (error) => {
+      alert(error.message || "Failed to delete warehouse")
     },
   })
 

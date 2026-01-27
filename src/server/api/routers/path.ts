@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { eq } from "drizzle-orm"
+import { TRPCError } from "@trpc/server"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import { paths } from "@/server/db/schema"
@@ -116,7 +117,10 @@ export const pathRouter = createTRPCRouter({
         .where(eq(paths.id, input.id))
 
       if (!existing) {
-        throw new Error("Path not found")
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Path not found",
+        })
       }
 
       const [path] = await db
@@ -143,7 +147,10 @@ export const pathRouter = createTRPCRouter({
         .where(eq(paths.id, input.id))
 
       if (!existing) {
-        throw new Error("Path not found")
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Path not found",
+        })
       }
 
       const [path] = await db

@@ -159,17 +159,26 @@ function ScenarioCard({ scenario }: ScenarioCardProps) {
     onSuccess: () => {
       utils.scenario.getAll.invalidate()
     },
+    onError: (error) => {
+      alert(error.message || "Failed to delete scenario")
+    },
   })
 
   const duplicateMutation = api.scenario.duplicate.useMutation({
     onSuccess: () => {
       utils.scenario.getAll.invalidate()
     },
+    onError: (error) => {
+      alert(error.message || "Failed to duplicate scenario")
+    },
   })
 
   const toggleActiveMutation = api.scenario.toggleActive.useMutation({
     onSuccess: () => {
       utils.scenario.getAll.invalidate()
+    },
+    onError: (error) => {
+      alert(error.message || "Failed to toggle scenario")
     },
   })
 

@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { eq } from "drizzle-orm"
+import { TRPCError } from "@trpc/server"
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc"
 import { db } from "@/server/db"
 import {
@@ -101,7 +102,10 @@ export const warehouseRouter = createTRPCRouter({
         .where(eq(warehouses.id, input.id))
 
       if (!existing) {
-        throw new Error("Warehouse not found")
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Warehouse not found",
+        })
       }
 
       // Create the new warehouse
@@ -116,7 +120,10 @@ export const warehouseRouter = createTRPCRouter({
         .returning()
 
       if (!warehouse) {
-        throw new Error("Failed to create warehouse")
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create warehouse",
+        })
       }
 
       // Copy all placed elements from the original warehouse
