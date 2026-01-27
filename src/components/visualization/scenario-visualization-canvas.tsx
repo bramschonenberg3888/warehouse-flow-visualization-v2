@@ -17,7 +17,7 @@ import type {
   LocationNode,
 } from "@/lib/scenario-engine/types"
 import { generatePath, type Point } from "@/lib/pathfinding"
-import { getTemplateVisualProperties } from "@/lib/element-utils"
+import { getTemplateElements, drawMultiShapeElement } from "@/lib/element-utils"
 
 // Rendering configuration
 const PALLET_SIZE = 24
@@ -189,11 +189,20 @@ export function ScenarioVisualizationCanvas({
     // Draw each placed element
     for (const element of placedElements) {
       const template = templateMap.get(element.elementTemplateId)
-      const visualProps = getTemplateVisualProperties(template?.excalidrawData)
+      const templateElements = getTemplateElements(
+        template?.excalidrawData,
+        template?.defaultWidth ?? element.width,
+        template?.defaultHeight ?? element.height
+      )
 
       const pos = worldToCanvas({ x: element.positionX, y: element.positionY })
       const width = element.width * viewTransform.scale
       const height = element.height * viewTransform.scale
+
+      // Calculate scale factors for placed element vs template default size
+      const scaleX = element.width / (template?.defaultWidth ?? element.width)
+      const scaleY =
+        element.height / (template?.defaultHeight ?? element.height)
 
       // Save context for rotation
       ctx.save()
@@ -207,42 +216,17 @@ export function ScenarioVisualizationCanvas({
         ctx.translate(-centerX, -centerY)
       }
 
-      // Draw element background
-      ctx.fillStyle = visualProps.backgroundColor
-      ctx.globalAlpha = visualProps.opacity / 100
+      // Draw all shapes in the template
+      drawMultiShapeElement(
+        ctx,
+        templateElements,
+        pos.x,
+        pos.y,
+        viewTransform.scale,
+        scaleX,
+        scaleY
+      )
 
-      // Draw based on shape type (simplified - just rectangles for now)
-      const hasRoundness =
-        visualProps.roundness?.type && visualProps.roundness.type > 0
-      const radius = hasRoundness ? Math.min(width, height) * 0.1 : 0
-      if (radius > 0) {
-        drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
-        ctx.fill()
-      } else {
-        ctx.fillRect(pos.x, pos.y, width, height)
-      }
-
-      // Draw element stroke
-      ctx.globalAlpha = 1
-      ctx.strokeStyle = visualProps.strokeColor
-      ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
-
-      if (visualProps.strokeStyle === "dashed") {
-        ctx.setLineDash([8, 4])
-      } else if (visualProps.strokeStyle === "dotted") {
-        ctx.setLineDash([2, 2])
-      } else {
-        ctx.setLineDash([])
-      }
-
-      if (radius > 0) {
-        drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
-        ctx.stroke()
-      } else {
-        ctx.strokeRect(pos.x, pos.y, width, height)
-      }
-
-      ctx.setLineDash([])
       ctx.restore()
 
       // Draw element label

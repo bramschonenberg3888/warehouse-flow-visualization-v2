@@ -212,6 +212,193 @@ export function getTemplateVisualProperties(
 }
 
 /**
+ * Get all template elements for rendering (handles both legacy v1 and v2 formats)
+ * Returns array of template elements with their relative positions
+ */
+export function getTemplateElements(
+  data: ExcalidrawElementData | null | undefined,
+  width: number,
+  height: number
+): ExcalidrawTemplateElement[] {
+  if (!data) {
+    // Return single default rectangle
+    return [
+      {
+        type: "rectangle",
+        relativeX: 0,
+        relativeY: 0,
+        width,
+        height,
+        angle: 0,
+        ...DEFAULT_VISUAL_PROPERTIES,
+      },
+    ]
+  }
+
+  // V2 format with elements array
+  if (data.version === 2 && data.elements && data.elements.length > 0) {
+    return data.elements
+  }
+
+  // Legacy v1 format - convert to single element
+  return migrateLegacyTemplate(data, width, height)
+}
+
+/**
+ * Draw a single template element shape on a canvas
+ */
+export function drawTemplateShape(
+  ctx: CanvasRenderingContext2D,
+  element: ExcalidrawTemplateElement,
+  x: number,
+  y: number,
+  scale: number
+): void {
+  const width = element.width * scale
+  const height = element.height * scale
+
+  ctx.save()
+
+  // Draw fill
+  ctx.fillStyle = element.backgroundColor
+  ctx.globalAlpha = element.opacity / 100
+
+  const hasRoundness = element.roundness?.type && element.roundness.type > 0
+  const radius = hasRoundness ? Math.min(width, height) * 0.1 : 0
+
+  if (element.type === "ellipse") {
+    ctx.beginPath()
+    ctx.ellipse(
+      x + width / 2,
+      y + height / 2,
+      width / 2,
+      height / 2,
+      0,
+      0,
+      Math.PI * 2
+    )
+    ctx.fill()
+  } else if (element.type === "diamond") {
+    ctx.beginPath()
+    ctx.moveTo(x + width / 2, y)
+    ctx.lineTo(x + width, y + height / 2)
+    ctx.lineTo(x + width / 2, y + height)
+    ctx.lineTo(x, y + height / 2)
+    ctx.closePath()
+    ctx.fill()
+  } else {
+    // Rectangle (default)
+    if (radius > 0) {
+      drawRoundedRectPath(ctx, x, y, width, height, radius)
+      ctx.fill()
+    } else {
+      ctx.fillRect(x, y, width, height)
+    }
+  }
+
+  // Draw stroke
+  ctx.globalAlpha = 1
+  ctx.strokeStyle = element.strokeColor
+  ctx.lineWidth = element.strokeWidth * scale
+
+  if (element.strokeStyle === "dashed") {
+    ctx.setLineDash([8, 4])
+  } else if (element.strokeStyle === "dotted") {
+    ctx.setLineDash([2, 2])
+  } else {
+    ctx.setLineDash([])
+  }
+
+  if (element.type === "ellipse") {
+    ctx.beginPath()
+    ctx.ellipse(
+      x + width / 2,
+      y + height / 2,
+      width / 2,
+      height / 2,
+      0,
+      0,
+      Math.PI * 2
+    )
+    ctx.stroke()
+  } else if (element.type === "diamond") {
+    ctx.beginPath()
+    ctx.moveTo(x + width / 2, y)
+    ctx.lineTo(x + width, y + height / 2)
+    ctx.lineTo(x + width / 2, y + height)
+    ctx.lineTo(x, y + height / 2)
+    ctx.closePath()
+    ctx.stroke()
+  } else {
+    if (radius > 0) {
+      drawRoundedRectPath(ctx, x, y, width, height, radius)
+      ctx.stroke()
+    } else {
+      ctx.strokeRect(x, y, width, height)
+    }
+  }
+
+  ctx.setLineDash([])
+  ctx.restore()
+}
+
+/**
+ * Helper to draw rounded rectangle path
+ */
+function drawRoundedRectPath(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+): void {
+  ctx.beginPath()
+  ctx.moveTo(x + radius, y)
+  ctx.lineTo(x + width - radius, y)
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius)
+  ctx.lineTo(x + width, y + height - radius)
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
+  ctx.lineTo(x + radius, y + height)
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius)
+  ctx.lineTo(x, y + radius)
+  ctx.quadraticCurveTo(x, y, x + radius, y)
+  ctx.closePath()
+}
+
+/**
+ * Draw all shapes of a multi-element template
+ * @param ctx Canvas context
+ * @param templateElements Array of template elements to draw
+ * @param baseX Base X position (element's position)
+ * @param baseY Base Y position (element's position)
+ * @param scale Scale factor for rendering
+ * @param scaleX X scale factor for the placed element (element.width / template.defaultWidth)
+ * @param scaleY Y scale factor for the placed element (element.height / template.defaultHeight)
+ */
+export function drawMultiShapeElement(
+  ctx: CanvasRenderingContext2D,
+  templateElements: ExcalidrawTemplateElement[],
+  baseX: number,
+  baseY: number,
+  scale: number,
+  scaleX: number = 1,
+  scaleY: number = 1
+): void {
+  for (const element of templateElements) {
+    const x = baseX + element.relativeX * scaleX * scale
+    const y = baseY + element.relativeY * scaleY * scale
+    // Scale individual element dimensions
+    const scaledElement = {
+      ...element,
+      width: element.width * scaleX,
+      height: element.height * scaleY,
+    }
+    drawTemplateShape(ctx, scaledElement, x, y, scale)
+  }
+}
+
+/**
  * Calculate bounding box of elements
  */
 export function calculateBoundingBox(elements: ExcalidrawElementType[]): {

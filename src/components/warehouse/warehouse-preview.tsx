@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useMemo } from "react"
 import type { PlacedElement, ElementTemplate } from "@/server/db/schema"
-import { getTemplateVisualProperties } from "@/lib/element-utils"
+import { getTemplateElements, drawMultiShapeElement } from "@/lib/element-utils"
 import { GRID_CELL_SIZE } from "@/lib/grid-config"
 
 interface WarehousePreviewProps {
@@ -95,12 +95,21 @@ export function WarehousePreview({
     // Draw placed elements
     for (const element of placedElements) {
       const template = templateMap.get(element.elementTemplateId)
-      const visualProps = getTemplateVisualProperties(template?.excalidrawData)
+      const templateElements = getTemplateElements(
+        template?.excalidrawData,
+        template?.defaultWidth ?? element.width,
+        template?.defaultHeight ?? element.height
+      )
 
       const x = offsetX + element.positionX * scale
       const y = offsetY + element.positionY * scale
       const elWidth = element.width * scale
       const elHeight = element.height * scale
+
+      // Calculate scale factors for placed element vs template default size
+      const scaleX = element.width / (template?.defaultWidth ?? element.width)
+      const scaleY =
+        element.height / (template?.defaultHeight ?? element.height)
 
       ctx.save()
 
@@ -113,16 +122,8 @@ export function WarehousePreview({
         ctx.translate(-centerX, -centerY)
       }
 
-      // Draw element background
-      ctx.fillStyle = visualProps.backgroundColor
-      ctx.globalAlpha = visualProps.opacity / 100
-      ctx.fillRect(x, y, elWidth, elHeight)
-
-      // Draw element stroke
-      ctx.globalAlpha = 1
-      ctx.strokeStyle = visualProps.strokeColor
-      ctx.lineWidth = Math.max(0.5, visualProps.strokeWidth * scale)
-      ctx.strokeRect(x, y, elWidth, elHeight)
+      // Draw all shapes in the template
+      drawMultiShapeElement(ctx, templateElements, x, y, scale, scaleX, scaleY)
 
       ctx.restore()
     }

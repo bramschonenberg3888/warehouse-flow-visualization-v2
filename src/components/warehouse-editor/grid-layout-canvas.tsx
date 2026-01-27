@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback, useMemo } from "react"
 import type { PlacedElement, ElementTemplate } from "@/server/db/schema"
-import { getTemplateVisualProperties } from "@/lib/element-utils"
+import { getTemplateElements, drawMultiShapeElement } from "@/lib/element-utils"
 import {
   GRID_CELL_SIZE,
   worldToGrid,
@@ -794,8 +794,10 @@ export function GridLayoutCanvas({
 
     // Draw template preview on hover or placement drag
     if (selectedTemplate) {
-      const visualProps = getTemplateVisualProperties(
-        selectedTemplate.excalidrawData
+      const templateElements = getTemplateElements(
+        selectedTemplate.excalidrawData,
+        selectedTemplate.defaultWidth,
+        selectedTemplate.defaultHeight
       )
       const width = selectedTemplate.defaultWidth * viewTransform.scale
       const height = selectedTemplate.defaultHeight * viewTransform.scale
@@ -825,33 +827,57 @@ export function GridLayoutCanvas({
             heightCells
           )
 
+          ctx.save()
           ctx.globalAlpha = 0.5
-          ctx.fillStyle = isValid ? visualProps.backgroundColor : "#fecaca"
-          ctx.fillRect(canvasPos.x, canvasPos.y, width, height)
-          ctx.strokeStyle = isValid ? visualProps.strokeColor : "#ef4444"
-          ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
-          ctx.strokeRect(canvasPos.x, canvasPos.y, width, height)
+          if (isValid) {
+            // Draw multi-shape template preview
+            drawMultiShapeElement(
+              ctx,
+              templateElements,
+              canvasPos.x,
+              canvasPos.y,
+              viewTransform.scale,
+              1,
+              1
+            )
+          } else {
+            // Draw invalid indicator (red rectangle)
+            ctx.fillStyle = "#fecaca"
+            ctx.fillRect(canvasPos.x, canvasPos.y, width, height)
+            ctx.strokeStyle = "#ef4444"
+            ctx.lineWidth = 2
+            ctx.strokeRect(canvasPos.x, canvasPos.y, width, height)
+          }
+          ctx.restore()
         }
-        ctx.globalAlpha = 1
       } else if (hoveredCell) {
-        // Draw single preview on hover
+        // Draw single preview on hover with multi-shape support
         const worldPos = gridToWorldCorner(hoveredCell)
         const canvasPos = worldToCanvas(worldPos.x, worldPos.y)
 
+        ctx.save()
         ctx.globalAlpha = 0.5
-        ctx.fillStyle = visualProps.backgroundColor
-        ctx.fillRect(canvasPos.x, canvasPos.y, width, height)
-        ctx.strokeStyle = visualProps.strokeColor
-        ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
-        ctx.strokeRect(canvasPos.x, canvasPos.y, width, height)
-        ctx.globalAlpha = 1
+        drawMultiShapeElement(
+          ctx,
+          templateElements,
+          canvasPos.x,
+          canvasPos.y,
+          viewTransform.scale,
+          1,
+          1
+        )
+        ctx.restore()
       }
     }
 
     // Draw placed elements (with visual offset for grid preview)
     for (const element of placedElements) {
       const template = templateMap.get(element.elementTemplateId)
-      const visualProps = getTemplateVisualProperties(template?.excalidrawData)
+      const templateElements = getTemplateElements(
+        template?.excalidrawData,
+        template?.defaultWidth ?? element.width,
+        template?.defaultHeight ?? element.height
+      )
 
       // Check if this element is being dragged or resized
       const isBeingDragged = dragState?.elementId === element.id
@@ -900,6 +926,10 @@ export function GridLayoutCanvas({
 
       const isSelected = element.id === selectedElementId
 
+      // Calculate scale factors for placed element vs template default size
+      const scaleX = elemWidth / (template?.defaultWidth ?? element.width)
+      const scaleY = elemHeight / (template?.defaultHeight ?? element.height)
+
       ctx.save()
 
       // Apply rotation around element center
@@ -911,61 +941,39 @@ export function GridLayoutCanvas({
         ctx.translate(-centerX, -centerY)
       }
 
-      // Draw element background
-      ctx.fillStyle = visualProps.backgroundColor
-      // Apply reduced opacity when dragging/resizing, and show invalid state with red tint
-      if (isBeingDragged || isBeingResized) {
-        const isValid = isBeingDragged ? isDragValid : isResizeValid
-        ctx.globalAlpha = isValid ? 0.7 : 0.4
-        if (!isValid) {
-          ctx.fillStyle = "#fecaca" // Red tint for invalid position/size
-        }
-      } else {
-        ctx.globalAlpha = visualProps.opacity / 100
-      }
-
-      const hasRoundness =
-        visualProps.roundness?.type && visualProps.roundness.type > 0
-      const radius = hasRoundness ? Math.min(width, height) * 0.1 : 0
-
-      if (radius > 0) {
-        drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
-        ctx.fill()
-      } else {
-        ctx.fillRect(pos.x, pos.y, width, height)
-      }
-
-      // Draw element stroke
-      ctx.globalAlpha = 1
-      // Red stroke for invalid drag/resize, blue for selected, otherwise template color
       const isInvalidOperation =
         (isBeingDragged && !isDragValid) || (isBeingResized && !isResizeValid)
-      ctx.strokeStyle = isInvalidOperation
-        ? "#ef4444"
-        : isSelected
-          ? "#3b82f6"
-          : visualProps.strokeColor
-      ctx.lineWidth =
-        isSelected || isBeingDragged || isBeingResized
-          ? 3
-          : visualProps.strokeWidth * viewTransform.scale
 
-      if (visualProps.strokeStyle === "dashed") {
-        ctx.setLineDash([8, 4])
-      } else if (visualProps.strokeStyle === "dotted") {
-        ctx.setLineDash([2, 2])
+      if (isInvalidOperation) {
+        // Draw red tint for invalid drag/resize
+        ctx.globalAlpha = 0.4
+        ctx.fillStyle = "#fecaca"
+        ctx.fillRect(pos.x, pos.y, width, height)
+        ctx.globalAlpha = 1
+        ctx.strokeStyle = "#ef4444"
+        ctx.lineWidth = 3
+        ctx.strokeRect(pos.x, pos.y, width, height)
       } else {
-        ctx.setLineDash([])
+        // Draw all shapes in the template
+        ctx.globalAlpha = isBeingDragged || isBeingResized ? 0.7 : 1
+        drawMultiShapeElement(
+          ctx,
+          templateElements,
+          pos.x,
+          pos.y,
+          viewTransform.scale,
+          scaleX,
+          scaleY
+        )
+        ctx.globalAlpha = 1
       }
 
-      if (radius > 0) {
-        drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
-        ctx.stroke()
-      } else {
+      // Draw selection border on top
+      if (isSelected && !isInvalidOperation) {
+        ctx.strokeStyle = "#3b82f6"
+        ctx.lineWidth = 3
         ctx.strokeRect(pos.x, pos.y, width, height)
       }
-
-      ctx.setLineDash([])
 
       // Draw selection handles if selected
       if (isSelected) {
@@ -1119,25 +1127,4 @@ export function GridLayoutCanvas({
       )}
     </div>
   )
-}
-
-function drawRoundedRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number
-) {
-  ctx.beginPath()
-  ctx.moveTo(x + radius, y)
-  ctx.lineTo(x + width - radius, y)
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius)
-  ctx.lineTo(x + width, y + height - radius)
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
-  ctx.lineTo(x + radius, y + height)
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius)
-  ctx.lineTo(x, y + radius)
-  ctx.quadraticCurveTo(x, y, x + radius, y)
-  ctx.closePath()
 }

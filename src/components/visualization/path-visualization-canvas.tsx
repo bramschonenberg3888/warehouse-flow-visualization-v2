@@ -4,7 +4,7 @@ import { useRef, useEffect, useState, useMemo, useCallback } from "react"
 import type { PlacedElement, ElementTemplate } from "@/server/db/schema"
 import type { Pallet } from "@/lib/path-engine/engine"
 import type { Point } from "@/lib/pathfinding"
-import { getTemplateVisualProperties } from "@/lib/element-utils"
+import { getTemplateElements, drawMultiShapeElement } from "@/lib/element-utils"
 import { GRID_CELL_SIZE } from "@/lib/grid-config"
 
 const CANVAS_PADDING = 50
@@ -140,11 +140,20 @@ export function PathVisualizationCanvas({
     // Draw placed elements
     for (const element of placedElements) {
       const template = templateMap.get(element.elementTemplateId)
-      const visualProps = getTemplateVisualProperties(template?.excalidrawData)
+      const templateElements = getTemplateElements(
+        template?.excalidrawData,
+        template?.defaultWidth ?? element.width,
+        template?.defaultHeight ?? element.height
+      )
 
       const pos = worldToCanvas({ x: element.positionX, y: element.positionY })
       const width = element.width * viewTransform.scale
       const height = element.height * viewTransform.scale
+
+      // Calculate scale factors for placed element vs template default size
+      const scaleX = element.width / (template?.defaultWidth ?? element.width)
+      const scaleY =
+        element.height / (template?.defaultHeight ?? element.height)
 
       ctx.save()
 
@@ -156,42 +165,17 @@ export function PathVisualizationCanvas({
         ctx.translate(-centerX, -centerY)
       }
 
-      // Draw element background
-      ctx.fillStyle = visualProps.backgroundColor
-      ctx.globalAlpha = visualProps.opacity / 100
+      // Draw all shapes in the template
+      drawMultiShapeElement(
+        ctx,
+        templateElements,
+        pos.x,
+        pos.y,
+        viewTransform.scale,
+        scaleX,
+        scaleY
+      )
 
-      const hasRoundness =
-        visualProps.roundness?.type && visualProps.roundness.type > 0
-      const radius = hasRoundness ? Math.min(width, height) * 0.1 : 0
-
-      if (radius > 0) {
-        drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
-        ctx.fill()
-      } else {
-        ctx.fillRect(pos.x, pos.y, width, height)
-      }
-
-      // Draw element stroke
-      ctx.globalAlpha = 1
-      ctx.strokeStyle = visualProps.strokeColor
-      ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
-
-      if (visualProps.strokeStyle === "dashed") {
-        ctx.setLineDash([8, 4])
-      } else if (visualProps.strokeStyle === "dotted") {
-        ctx.setLineDash([2, 2])
-      } else {
-        ctx.setLineDash([])
-      }
-
-      if (radius > 0) {
-        drawRoundedRect(ctx, pos.x, pos.y, width, height, radius)
-        ctx.stroke()
-      } else {
-        ctx.strokeRect(pos.x, pos.y, width, height)
-      }
-
-      ctx.setLineDash([])
       ctx.restore()
 
       // Draw element label
@@ -235,56 +219,42 @@ export function PathVisualizationCanvas({
       const template = pallet.elementTemplateId
         ? templateMap.get(pallet.elementTemplateId)
         : null
-      const visualProps = getTemplateVisualProperties(template?.excalidrawData)
 
       // Use template size or default
-      const width =
-        (template?.defaultWidth ?? PALLET_SIZE) * viewTransform.scale
-      const height =
-        (template?.defaultHeight ?? PALLET_SIZE) * viewTransform.scale
+      const width = template?.defaultWidth ?? PALLET_SIZE
+      const height = template?.defaultHeight ?? PALLET_SIZE
 
       ctx.save()
 
+      // Apply rotation if template has rotateWithMovement enabled
+      if (template?.rotateWithMovement && pallet.rotation !== 0) {
+        ctx.translate(canvasPos.x, canvasPos.y)
+        ctx.rotate(pallet.rotation)
+        ctx.translate(-canvasPos.x, -canvasPos.y)
+      }
+
       if (template) {
-        // Draw as rectangle using template visual properties
-        const x = canvasPos.x - width / 2
-        const y = canvasPos.y - height / 2
+        // Get all template shapes for multi-shape rendering
+        const templateElements = getTemplateElements(
+          template.excalidrawData,
+          width,
+          height
+        )
 
-        // Draw fill
-        ctx.fillStyle = visualProps.backgroundColor
-        ctx.globalAlpha *= visualProps.opacity / 100
+        // Position is centered on pallet, so offset to top-left corner
+        const x = canvasPos.x - (width * viewTransform.scale) / 2
+        const y = canvasPos.y - (height * viewTransform.scale) / 2
 
-        const hasRoundness =
-          visualProps.roundness?.type && visualProps.roundness.type > 0
-        const radius = hasRoundness ? Math.min(width, height) * 0.1 : 0
-
-        if (radius > 0) {
-          drawRoundedRect(ctx, x, y, width, height, radius)
-          ctx.fill()
-        } else {
-          ctx.fillRect(x, y, width, height)
-        }
-
-        // Draw stroke
-        ctx.globalAlpha = 1
-        ctx.strokeStyle = visualProps.strokeColor
-        ctx.lineWidth = visualProps.strokeWidth * viewTransform.scale
-
-        if (visualProps.strokeStyle === "dashed") {
-          ctx.setLineDash([8, 4])
-        } else if (visualProps.strokeStyle === "dotted") {
-          ctx.setLineDash([2, 2])
-        } else {
-          ctx.setLineDash([])
-        }
-
-        if (radius > 0) {
-          drawRoundedRect(ctx, x, y, width, height, radius)
-          ctx.stroke()
-        } else {
-          ctx.strokeRect(x, y, width, height)
-        }
-        ctx.setLineDash([])
+        // Draw all shapes in the template
+        drawMultiShapeElement(
+          ctx,
+          templateElements,
+          x,
+          y,
+          viewTransform.scale,
+          1,
+          1
+        )
       } else {
         // Fallback: Draw as colored circle
         const size = PALLET_SIZE * viewTransform.scale
@@ -325,25 +295,4 @@ export function PathVisualizationCanvas({
       )}
     </div>
   )
-}
-
-function drawRoundedRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number
-) {
-  ctx.beginPath()
-  ctx.moveTo(x + radius, y)
-  ctx.lineTo(x + width - radius, y)
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius)
-  ctx.lineTo(x + width, y + height - radius)
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height)
-  ctx.lineTo(x + radius, y + height)
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius)
-  ctx.lineTo(x, y + radius)
-  ctx.quadraticCurveTo(x, y, x + radius, y)
-  ctx.closePath()
 }
