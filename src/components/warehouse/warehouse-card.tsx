@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { formatDistanceToNow } from "date-fns"
-import { Edit, Route, Trash2, MoreVertical } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -11,13 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { WarehousePreview } from "@/components/warehouse/warehouse-preview"
 import { api } from "@/trpc/react"
 import type { Warehouse } from "@/server/db/schema"
@@ -48,51 +41,15 @@ export function WarehouseCard({ warehouse }: WarehouseCardProps) {
   }
 
   return (
-    <Card className="group relative">
+    <Card className="transition-shadow hover:shadow-md">
       <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-lg">{warehouse.name}</CardTitle>
-            {warehouse.description && (
-              <CardDescription className="line-clamp-2">
-                {warehouse.description}
-              </CardDescription>
-            )}
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href={`/warehouses/${warehouse.id}/editor`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Layout
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/warehouses/${warehouse.id}/flows`}>
-                  <Route className="mr-2 h-4 w-4" />
-                  Manage Flows
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive focus:text-destructive"
-                onClick={handleDelete}
-                disabled={deleteMutation.isPending}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="space-y-1">
+          <CardTitle className="text-lg">{warehouse.name}</CardTitle>
+          {warehouse.description && (
+            <CardDescription className="line-clamp-2">
+              {warehouse.description}
+            </CardDescription>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -123,18 +80,20 @@ export function WarehouseCard({ warehouse }: WarehouseCardProps) {
               addSuffix: true,
             })}
           </span>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" asChild>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
               <Link href={`/warehouses/${warehouse.id}/editor`}>
-                <Edit className="mr-1 h-3 w-3" />
-                Edit
+                <Pencil className="h-4 w-4" />
               </Link>
             </Button>
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/warehouses/${warehouse.id}/flows`}>
-                <Route className="mr-1 h-3 w-3" />
-                Flows
-              </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>

@@ -1,7 +1,12 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
-import type { Path, PlacedElement, Scenario } from "@/server/db/schema"
+import type {
+  Path,
+  PlacedElement,
+  Scenario,
+  ElementTemplate,
+} from "@/server/db/schema"
 import { PathEngine, type Pallet } from "@/lib/path-engine/engine"
 
 const FRAME_INTERVAL = 33 // ~30fps throttle
@@ -22,7 +27,8 @@ export interface PathVisualizationControls {
 export function usePathVisualization(
   scenario: Scenario | null,
   paths: Path[],
-  placedElements: PlacedElement[]
+  placedElements: PlacedElement[],
+  templates: ElementTemplate[] = []
 ): {
   state: PathVisualizationState
   controls: PathVisualizationControls
@@ -54,11 +60,11 @@ export function usePathVisualization(
       return
     }
 
-    engineRef.current = new PathEngine(paths, placedElements, {
+    engineRef.current = new PathEngine(paths, placedElements, templates, {
       speedMultiplier: speedRef.current,
       maxDuration: scenario.duration ?? undefined,
     })
-  }, [scenario, paths, placedElements])
+  }, [scenario, paths, placedElements, templates])
 
   // Initialize engine on mount and when dependencies change
   useEffect(() => {

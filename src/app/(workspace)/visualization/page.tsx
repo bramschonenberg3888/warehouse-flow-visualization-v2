@@ -85,12 +85,14 @@ function VisualizationContent() {
 
   const stablePaths = useMemo(() => paths ?? [], [paths])
   const stableElements = useMemo(() => placedElements ?? [], [placedElements])
+  const stableTemplates = useMemo(() => templates ?? [], [templates])
 
   // Path visualization
   const { state, controls, speed } = usePathVisualization(
     scenarioForHook,
     stablePaths,
-    stableElements
+    stableElements,
+    stableTemplates
   )
 
   // Group scenarios by warehouse for display

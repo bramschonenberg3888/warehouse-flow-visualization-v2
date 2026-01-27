@@ -1,4 +1,9 @@
-import type { Path, PlacedElement } from "@/server/db/schema"
+import type {
+  Path,
+  PlacedElement,
+  ElementTemplate,
+  FrontDirection,
+} from "@/server/db/schema"
 import {
   generateMultiPath,
   getPositionAlongPath,
@@ -15,6 +20,7 @@ export interface Pallet {
   elementTemplateId: string | null
   x: number
   y: number
+  rotation: number // radians
   state: "moving" | "dwelling"
   currentStopIndex: number
   progress: number // 0-1 along current segment
@@ -51,10 +57,34 @@ function parseGridCellId(id: string): GridCell | null {
   return { col, row }
 }
 
+// Base angles for each front direction (at rest position)
+const FRONT_BASE_ANGLES: Record<FrontDirection, number> = {
+  up: -Math.PI / 2, // -90° (pointing up)
+  down: Math.PI / 2, // 90° (pointing down)
+  left: Math.PI, // 180° (pointing left)
+  right: 0, // 0° (pointing right)
+}
+
+/**
+ * Calculate rotation angle based on movement direction and front direction.
+ * Movement angle: 0 = right, π/2 = down, π = left, -π/2 = up
+ */
+function calculateRotation(
+  dx: number,
+  dy: number,
+  frontDirection: FrontDirection
+): number {
+  if (dx === 0 && dy === 0) return 0
+  const movementAngle = Math.atan2(dy, dx)
+  const baseAngle = FRONT_BASE_ANGLES[frontDirection]
+  return movementAngle - baseAngle
+}
+
 export class PathEngine {
   private pallets: Map<string, Pallet> = new Map()
   private pathStates: Map<string, PathState> = new Map()
   private placedElementMap: Map<string, PlacedElement> = new Map()
+  private templateMap: Map<string, ElementTemplate> = new Map()
   private config: PathEngineConfig
   private clock: number = 0
   private nextPalletId: number = 0
@@ -62,6 +92,7 @@ export class PathEngine {
   constructor(
     paths: Path[],
     placedElements: PlacedElement[],
+    templates: ElementTemplate[],
     config: PathEngineConfig
   ) {
     this.config = config
@@ -69,6 +100,11 @@ export class PathEngine {
     // Build placed element lookup
     for (const el of placedElements) {
       this.placedElementMap.set(el.id, el)
+    }
+
+    // Build template lookup
+    for (const template of templates) {
+      this.templateMap.set(template.id, template)
     }
 
     // Initialize path states
@@ -178,6 +214,20 @@ export class PathEngine {
     const startPos = stopPositions[0]
     if (!startPos) return
 
+    // Calculate initial rotation based on direction to first destination
+    let initialRotation = 0
+    if (path.elementTemplateId) {
+      const template = this.templateMap.get(path.elementTemplateId)
+      if (template?.rotateWithMovement && stopPositions.length > 1) {
+        const nextPos = stopPositions[1]
+        if (nextPos) {
+          const dx = nextPos.x - startPos.x
+          const dy = nextPos.y - startPos.y
+          initialRotation = calculateRotation(dx, dy, template.frontDirection)
+        }
+      }
+    }
+
     const palletId = `pallet-${this.nextPalletId++}`
     const pallet: Pallet = {
       id: palletId,
@@ -186,6 +236,7 @@ export class PathEngine {
       elementTemplateId: path.elementTemplateId,
       x: startPos.x,
       y: startPos.y,
+      rotation: initialRotation,
       state: "dwelling",
       currentStopIndex: 0,
       progress: 0,
@@ -203,6 +254,12 @@ export class PathEngine {
 
     const { path, segments, stopPositions } = state
 
+    // Get template for rotation calculation
+    const template = pallet.elementTemplateId
+      ? this.templateMap.get(pallet.elementTemplateId)
+      : null
+    const shouldRotate = template?.rotateWithMovement ?? false
+
     if (pallet.state === "dwelling") {
       pallet.dwellRemaining -= deltaTime
 
@@ -214,7 +271,17 @@ export class PathEngine {
           return
         }
 
-        // Start moving to next stop
+        // Start moving to next stop - update rotation to face next destination
+        if (shouldRotate && template) {
+          const currentPos = stopPositions[pallet.currentStopIndex]
+          const nextPos = stopPositions[pallet.currentStopIndex + 1]
+          if (currentPos && nextPos) {
+            const dx = nextPos.x - currentPos.x
+            const dy = nextPos.y - currentPos.y
+            pallet.rotation = calculateRotation(dx, dy, template.frontDirection)
+          }
+        }
+
         pallet.state = "moving"
         pallet.progress = 0
       }
@@ -238,6 +305,9 @@ export class PathEngine {
       const distanceToMove = (speed * deltaTime) / 1000
       const progressIncrement = distanceToMove / segment.length
 
+      const oldX = pallet.x
+      const oldY = pallet.y
+
       pallet.progress += progressIncrement
 
       if (pallet.progress >= 1) {
@@ -256,6 +326,15 @@ export class PathEngine {
         const pos = getPositionAlongPath(segment.path, pallet.progress)
         pallet.x = pos.x
         pallet.y = pos.y
+
+        // Update rotation based on movement direction
+        if (shouldRotate && template) {
+          const dx = pallet.x - oldX
+          const dy = pallet.y - oldY
+          if (dx !== 0 || dy !== 0) {
+            pallet.rotation = calculateRotation(dx, dy, template.frontDirection)
+          }
+        }
       }
     }
   }

@@ -1,14 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import {
-  Plus,
-  MoreVertical,
-  Edit,
-  Trash2,
-  Route,
-  Warehouse,
-} from "lucide-react"
+import { Plus, Pencil, Trash2, Route, Warehouse } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
@@ -19,13 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { api } from "@/trpc/react"
 import type { Flow, Warehouse as WarehouseType } from "@/server/db/schema"
 
@@ -161,7 +147,7 @@ function FlowCard({ flow, warehouseId }: FlowCardProps) {
   }
 
   return (
-    <Card>
+    <Card className="transition-shadow hover:shadow-md">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
@@ -171,29 +157,13 @@ function FlowCard({ flow, warehouseId }: FlowCardProps) {
             />
             <CardTitle className="text-base">{flow.name}</CardTitle>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href={`/flows/${flow.id}/edit`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Badge
+            variant={flow.isActive ? "default" : "secondary"}
+            className="cursor-pointer"
+            onClick={() => toggleActiveMutation.mutate({ id: flow.id })}
+          >
+            {flow.isActive ? "Active" : "Inactive"}
+          </Badge>
         </div>
         {flow.description && (
           <CardDescription className="line-clamp-2">
@@ -206,13 +176,22 @@ function FlowCard({ flow, warehouseId }: FlowCardProps) {
           <span className="text-sm text-muted-foreground">
             {flow.elementSequence.length} stops
           </span>
-          <Badge
-            variant={flow.isActive ? "default" : "secondary"}
-            className="cursor-pointer"
-            onClick={() => toggleActiveMutation.mutate({ id: flow.id })}
-          >
-            {flow.isActive ? "Active" : "Inactive"}
-          </Badge>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+              <Link href={`/flows/${flow.id}/edit`}>
+                <Pencil className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

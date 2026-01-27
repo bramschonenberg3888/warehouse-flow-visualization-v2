@@ -15,6 +15,9 @@ import { categories } from "./category"
 // - "mobile": Can move during simulation (pallets, forklifts, AGVs, workers)
 export type ElementBehavior = "static" | "mobile"
 
+// Front direction for rotation - which side of the element is considered "front"
+export type FrontDirection = "up" | "down" | "left" | "right"
+
 // Predefined + custom warehouse element templates
 export const elementTemplates = pgTable("element_templates", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -38,6 +41,12 @@ export const elementTemplates = pgTable("element_templates", {
     .$type<ElementBehavior>(),
   // true = system predefined, false = user-created
   isSystem: boolean("is_system").notNull().default(false),
+  // Rotation settings for mobile elements
+  rotateWithMovement: boolean("rotate_with_movement").notNull().default(false),
+  frontDirection: text("front_direction")
+    .notNull()
+    .default("up")
+    .$type<FrontDirection>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 

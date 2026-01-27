@@ -21,6 +21,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import {
   ExcalidrawWrapper,
   type ExcalidrawElementType,
@@ -32,6 +34,7 @@ import { api } from "@/trpc/react"
 import type {
   ExcalidrawElementData,
   ElementBehavior,
+  FrontDirection,
 } from "@/server/db/schema/element"
 import {
   isLegacyTemplate,
@@ -72,6 +75,8 @@ export default function EditElementPage({ params }: EditElementPageProps) {
   const [categoryId, setCategoryId] = useState<string>("")
   const [elementBehavior, setElementBehavior] =
     useState<ElementBehavior>("static")
+  const [rotateWithMovement, setRotateWithMovement] = useState(false)
+  const [frontDirection, setFrontDirection] = useState<FrontDirection>("up")
   const [hasElements, setHasElements] = useState(false)
   const [initialized, setInitialized] = useState(false)
 
@@ -111,6 +116,8 @@ export default function EditElementPage({ params }: EditElementPageProps) {
     setName(element.name)
     setCategoryId(element.categoryId || "")
     setElementBehavior(element.elementBehavior || "static")
+    setRotateWithMovement(element.rotateWithMovement ?? false)
+    setFrontDirection(element.frontDirection ?? "up")
     setInitialized(true)
   }
 
@@ -207,6 +214,9 @@ export default function EditElementPage({ params }: EditElementPageProps) {
       name: name.trim(),
       categoryId: categoryId || null,
       elementBehavior,
+      rotateWithMovement:
+        elementBehavior === "mobile" ? rotateWithMovement : false,
+      frontDirection: elementBehavior === "mobile" ? frontDirection : "up",
       icon,
       defaultWidth: bbox.width || 100,
       defaultHeight: bbox.height || 100,
@@ -217,6 +227,8 @@ export default function EditElementPage({ params }: EditElementPageProps) {
     name,
     categoryId,
     elementBehavior,
+    rotateWithMovement,
+    frontDirection,
     categories,
     element,
     updateMutation,
@@ -359,18 +371,48 @@ export default function EditElementPage({ params }: EditElementPageProps) {
             <SelectContent>
               <SelectItem value="static">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-gray-500" />
+                  <div className="h-2 w-2 rounded-full bg-muted-foreground" />
                   Static
                 </div>
               </SelectItem>
               <SelectItem value="mobile">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-green-500" />
+                  <div className="h-2 w-2 rounded-full bg-primary" />
                   Mobile
                 </div>
               </SelectItem>
             </SelectContent>
           </Select>
+          {elementBehavior === "mobile" && (
+            <>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="rotate-with-movement"
+                  checked={rotateWithMovement}
+                  onCheckedChange={setRotateWithMovement}
+                />
+                <Label htmlFor="rotate-with-movement" className="text-sm">
+                  Rotate with movement
+                </Label>
+              </div>
+              {rotateWithMovement && (
+                <Select
+                  value={frontDirection}
+                  onValueChange={(v) => setFrontDirection(v as FrontDirection)}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue placeholder="Front" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="up">Front: Up</SelectItem>
+                    <SelectItem value="down">Front: Down</SelectItem>
+                    <SelectItem value="left">Front: Left</SelectItem>
+                    <SelectItem value="right">Front: Right</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </>
+          )}
         </div>
         <Button onClick={handleSave} disabled={!canSave}>
           {updateMutation.isPending ? (

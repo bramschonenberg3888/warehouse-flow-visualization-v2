@@ -3,8 +3,7 @@
 import Link from "next/link"
 import {
   Plus,
-  MoreVertical,
-  Edit,
+  Pencil,
   Trash2,
   Copy,
   Layers,
@@ -26,13 +25,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { api } from "@/trpc/react"
 import type {
   Scenario as ScenarioType,
@@ -199,46 +191,20 @@ function ScenarioCard({ scenario }: ScenarioCardProps) {
     scenario.definition?.flows?.filter((f) => f.isActive)?.length ?? 0
 
   return (
-    <Card>
+    <Card className="transition-shadow hover:shadow-md">
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-muted-foreground" />
             <CardTitle className="text-base">{scenario.name}</CardTitle>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href={`/scenarios/${scenario.id}`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href={`/visualization?scenario=${scenario.id}`}>
-                  <Play className="mr-2 h-4 w-4" />
-                  Visualize
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDuplicate}>
-                <Copy className="mr-2 h-4 w-4" />
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleDelete}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Badge
+            variant={scenario.isActive ? "default" : "secondary"}
+            className="cursor-pointer"
+            onClick={() => toggleActiveMutation.mutate({ id: scenario.id })}
+          >
+            {scenario.isActive ? "Active" : "Inactive"}
+          </Badge>
         </div>
         {scenario.description && (
           <CardDescription className="line-clamp-2">
@@ -251,13 +217,31 @@ function ScenarioCard({ scenario }: ScenarioCardProps) {
           <div className="text-sm text-muted-foreground">
             {flowCount} flows ({activeFlowCount} active)
           </div>
-          <Badge
-            variant={scenario.isActive ? "default" : "secondary"}
-            className="cursor-pointer"
-            onClick={() => toggleActiveMutation.mutate({ id: scenario.id })}
-          >
-            {scenario.isActive ? "Active" : "Inactive"}
-          </Badge>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+              <Link href={`/scenarios/${scenario.id}`}>
+                <Pencil className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleDuplicate}
+              disabled={duplicateMutation.isPending}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

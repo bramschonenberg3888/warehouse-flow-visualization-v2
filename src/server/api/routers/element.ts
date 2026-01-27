@@ -8,6 +8,7 @@ import {
   placedElements,
   type ExcalidrawElementData,
   type ElementBehavior,
+  type FrontDirection,
 } from "@/server/db/schema"
 
 export const elementRouter = createTRPCRouter({
@@ -24,6 +25,8 @@ export const elementRouter = createTRPCRouter({
         defaultHeight: elementTemplates.defaultHeight,
         elementBehavior: elementTemplates.elementBehavior,
         isSystem: elementTemplates.isSystem,
+        rotateWithMovement: elementTemplates.rotateWithMovement,
+        frontDirection: elementTemplates.frontDirection,
         createdAt: elementTemplates.createdAt,
         category: categories,
       })
@@ -60,6 +63,8 @@ export const elementRouter = createTRPCRouter({
         defaultHeight: elementTemplates.defaultHeight,
         elementBehavior: elementTemplates.elementBehavior,
         isSystem: elementTemplates.isSystem,
+        rotateWithMovement: elementTemplates.rotateWithMovement,
+        frontDirection: elementTemplates.frontDirection,
         createdAt: elementTemplates.createdAt,
         category: categories,
       })
@@ -84,6 +89,8 @@ export const elementRouter = createTRPCRouter({
           defaultHeight: elementTemplates.defaultHeight,
           elementBehavior: elementTemplates.elementBehavior,
           isSystem: elementTemplates.isSystem,
+          rotateWithMovement: elementTemplates.rotateWithMovement,
+          frontDirection: elementTemplates.frontDirection,
           createdAt: elementTemplates.createdAt,
           category: categories,
         })
@@ -108,6 +115,8 @@ export const elementRouter = createTRPCRouter({
           .custom<ElementBehavior>()
           .optional()
           .default("static"),
+        rotateWithMovement: z.boolean().optional().default(false),
+        frontDirection: z.custom<FrontDirection>().optional().default("up"),
       })
     )
     .mutation(async ({ input }) => {
@@ -134,6 +143,8 @@ export const elementRouter = createTRPCRouter({
         defaultWidth: z.number().int().positive().optional(),
         defaultHeight: z.number().int().positive().optional(),
         elementBehavior: z.custom<ElementBehavior>().optional(),
+        rotateWithMovement: z.boolean().optional(),
+        frontDirection: z.custom<FrontDirection>().optional(),
       })
     )
     .mutation(async ({ input }) => {
