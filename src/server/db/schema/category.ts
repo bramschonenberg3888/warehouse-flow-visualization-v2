@@ -10,7 +10,7 @@ export const categories = pgTable("categories", {
   // Icon name from lucide-react
   icon: text("icon").notNull().default("Folder"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-})
+}).enableRLS()
 
 export type Category = typeof categories.$inferSelect
 export type NewCategory = typeof categories.$inferInsert

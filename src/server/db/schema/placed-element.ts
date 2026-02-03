@@ -32,7 +32,7 @@ export const placedElements = pgTable("placed_elements", {
   // Additional metadata (capacity, notes, etc.)
   metadata: jsonb("metadata").$type<PlacedElementMetadata>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-})
+}).enableRLS()
 
 // Relations
 export const placedElementsRelations = relations(placedElements, ({ one }) => ({

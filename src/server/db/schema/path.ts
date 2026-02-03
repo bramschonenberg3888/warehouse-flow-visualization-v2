@@ -39,7 +39,7 @@ export const paths = pgTable("paths", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-})
+}).enableRLS()
 
 // Relations
 export const pathsRelations = relations(paths, ({ one }) => ({

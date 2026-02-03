@@ -25,7 +25,7 @@ export const flows = pgTable("flows", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-})
+}).enableRLS()
 
 // Relations
 export const flowsRelations = relations(flows, ({ one }) => ({

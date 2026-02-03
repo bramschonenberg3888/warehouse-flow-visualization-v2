@@ -21,7 +21,7 @@ export const warehouses = pgTable("warehouses", {
   thumbnailUrl: text("thumbnail_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-})
+}).enableRLS()
 
 // Type for Excalidraw canvas state stored in JSONB
 export interface CanvasState {

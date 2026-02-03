@@ -48,7 +48,7 @@ export const elementTemplates = pgTable("element_templates", {
     .default("up")
     .$type<FrontDirection>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-})
+}).enableRLS()
 
 // Relations
 export const elementTemplatesRelations = relations(

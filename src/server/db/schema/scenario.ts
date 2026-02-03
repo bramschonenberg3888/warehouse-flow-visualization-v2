@@ -33,7 +33,7 @@ export const scenarios = pgTable("scenarios", {
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-})
+}).enableRLS()
 
 // Relations
 export const scenariosRelations = relations(scenarios, ({ one, many }) => ({
